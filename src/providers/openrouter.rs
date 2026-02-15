@@ -15,8 +15,7 @@ use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use std::collections::HashMap;
-use super::openai::{ChatRequest, ChatResponse, Message, Choice, Usage, ProviderError};
+use super::openai::{ChatRequest, ChatResponse, Message, ProviderError};
 
 /// 🔒 SAFETY: OpenRouter 配置结构体喵
 #[derive(Debug, Clone)]
@@ -47,7 +46,7 @@ impl Default for OpenRouterConfig {
 
 /// 🔒 SAFETY: OpenRouter 扩展的聊天请求结构喵
 /// 支持额外参数如 provider preferences
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct OpenRouterRequest {
     /// 基础聊天请求
     #[serde(flatten)]
@@ -78,7 +77,7 @@ pub struct ProviderPreference {
 }
 
 /// 🔒 SAFETY: OpenRouter 模型信息结构体喵
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ModelInfo {
     /// 模型 ID
     pub id: String,
@@ -93,7 +92,7 @@ pub struct ModelInfo {
 }
 
 /// 🔒 SAFETY: 定价信息结构体喵
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Pricing {
     /// 输入价格（每百万 token，美元）
     pub prompt: String,
@@ -242,7 +241,7 @@ impl OpenRouterClient {
 /// 🔒 SAFETY: OpenRouter 客户端公开接口喵
 impl OpenRouterClient {
     /// 🔒 SAFETY: 聊天接口（OpenRouter 扩展版）喵
-    pub async fn chat(&self, request: &OpenRouterRequest) -> Result<ChatResponse, ProviderError> {
+    pub async fn chat_api(&self, request: &OpenRouterRequest) -> Result<ChatResponse, ProviderError> {
         self.send_request_with_retry(request).await
     }
 
@@ -255,7 +254,7 @@ impl OpenRouterClient {
             route: None,
             transforms: None,
         };
-        self.chat(&openrouter_request).await
+        self.chat_api(&openrouter_request).await
     }
 
     /// 🔒 SAFETY: 快捷接口喵
@@ -274,7 +273,7 @@ impl OpenRouterClient {
             transforms: None,
         };
 
-        let response = self.chat(&request).await?;
+        let response = self.chat_api(&request).await?;
         Ok(response.choices.get(0)
             .ok_or_else(|| ProviderError::ApiError("No choices in response".to_string()))?
             .message
@@ -306,7 +305,7 @@ impl OpenRouterClient {
             transforms: None,
         };
 
-        let response = self.chat(&request).await?;
+        let response = self.chat_api(&request).await?;
         Ok(response.choices.get(0)
             .ok_or_else(|| ProviderError::ApiError("No choices in response".to_string()))?
             .message

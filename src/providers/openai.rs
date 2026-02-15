@@ -45,7 +45,7 @@ impl Default for OpenAIConfig {
 
 /// 🔒 SAFETY: OpenAI 聊天请求结构喵
 /// 严格遵循 OpenAI API 规范
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ChatRequest {
     /// 模型名称（例如 "gpt-4", "gpt-3.5-turbo"）
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -65,7 +65,7 @@ pub struct ChatRequest {
 
 /// 🔒 SAFETY: 消息结构体喵
 /// 支持多轮对话
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Message {
     /// 角色（system、user、assistant）
     pub role: String,
@@ -116,7 +116,7 @@ pub struct Choice {
     /// 消息
     pub message: Message,
     /// 结束原因
-    pub finish_reason: String,
+    pub finish_reason: Option<String>,
 }
 
 /// 🔒 SAFETY: 使用情况结构体喵
@@ -251,11 +251,11 @@ impl OpenAIClient {
 }
 
 /// 🔒 SAFETY: 实现 Provider Trait（待 traits.rs 定义后连接）喵
-/// 注意：实际实现需要等待 `core::traits.rs` 的 Provider trait 定义
+/// 注意：这里暂时使用自己的 Result 喵
 impl OpenAIClient {
     /// 🔒 SAFETY: 聊天接口喵
     /// 异常处理: 所有错误返回 ProviderError
-    pub async fn chat(&self, request: &ChatRequest) -> Result<ChatResponse, ProviderError> {
+    pub async fn chat_api(&self, request: &ChatRequest) -> Result<ChatResponse, ProviderError> {
         self.send_request_with_retry(request).await
     }
 
@@ -270,7 +270,7 @@ impl OpenAIClient {
             stream: None,
         };
 
-        let response = self.chat(&request).await?;
+        let response = self.chat_api(&request).await?;
         Ok(response.choices.get(0)
             .ok_or_else(|| ProviderError::ApiError("No choices in response".to_string()))?
             .message

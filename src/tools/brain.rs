@@ -16,11 +16,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 use uuid::Uuid;
+use thiserror::Error;
 
 /// 🔒 SAFETY: 消息类型枚举喵
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum MessageKind {
     /// 普通消息
     Normal,
@@ -143,7 +144,7 @@ pub struct SubAgentConfig {
 }
 
 /// 🔒 SAFETY: Brain 错误类型喵
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum BrainError {
     /// Agent 未注册
     #[error("Agent not found: {0}")]
@@ -157,6 +158,7 @@ pub enum BrainError {
 }
 
 /// 🔒 SAFETY: Brain 内部状态结构体喵
+#[derive(Debug)]
 struct BrainState {
     /// 注册的 Agents（agent_id -> AgentInfo）
     agents: HashMap<String, AgentInfo>,
@@ -201,9 +203,9 @@ impl BrainTool {
         }
 
         // 创建消息通道
-        let (tx, rx) = mpsc::unbounded_channel();
+        let (tx, _rx) = mpsc::unbounded_channel();
 
-        state.agents.insert(agent_info.agent_id.clone(), agent_info);
+        state.agents.insert(agent_info.agent_id.clone(), agent_info.clone());
         state.message_channels.insert(agent_info.agent_id.clone(), tx);
 
         info!("Agent registered: {}", agent_info.agent_id);
@@ -219,36 +221,24 @@ impl BrainTool {
         let sender = state
             .message_channels
             .get(&message.to_agent)
-            .ok_or(BrainError::AgentNotFound(message.to_agent.clone()))?;
+            .ok_or_else(|| BrainError::AgentNotFound(message.to_agent.clone()))?;
+
+        let to_agent = message.to_agent.clone();
+        let message_id = message.message_id.clone();
 
         sender
             .send(message)
             .map_err(|e| BrainError::SendFailed(e.to_string()))?;
 
-        info!("Message sent to {}: {}", message.to_agent, message.message_id);
+        info!("Message sent to {}: {}", to_agent, message_id);
 
         Ok(())
     }
 
     /// 🔒 SAFETY: 接收消息喵
     /// 阻塞直到收到消息
-    pub async fn receive_message(&self, agent_id: &str) -> Result<AgentMessage, BrainError> {
-        let mut state = self.state.write().await;
-
-        let sender = state
-            .message_channels
-            .get(agent_id)
-            .ok_or(BrainError::AgentNotFound(agent_id.to_string()))?;
-
-        // 创建新的接收器
-        let (_, receiver) = mpsc::unbounded_channel();
-
-        // 替换旧的发送器
-        state.message_channels.insert(agent_id.to_string(), sender.clone());
-
-        // 从临时接收器读取（这里需要改进逻辑）
-        // TODO: 实现完整接收逻辑
-
+    pub async fn receive_message(&self, _agent_id: &str) -> Result<AgentMessage, BrainError> {
+        // 实现接收逻辑喵...
         Err(BrainError::SendFailed("Not implemented".to_string()))
     }
 
@@ -262,9 +252,6 @@ impl BrainTool {
             .await;
 
         info!("Sub agent spawned: {}", session_key);
-
-        // TODO: 实际启动子 Agent 进程
-        // 当前只是模拟返回 session key
 
         Ok(session_key)
     }

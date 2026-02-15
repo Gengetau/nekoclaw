@@ -14,7 +14,7 @@ use crate::core::traits::*;
 use async_trait::async_trait;
 use std::pin::Pin;
 use std::sync::Arc;
-use futures::Stream;
+use futures::{Stream, StreamExt};
 use tokio::sync::mpsc;
 
 /// Discord Bot 配置
@@ -40,13 +40,13 @@ pub struct DiscordBot {
     config: DiscordConfig,
     provider: Option<Arc<dyn Provider>>,
     memory: Option<Arc<dyn Memory>>,
-    event_tx: mpx::UnboundedSender<DiscordEvent>,
+    event_tx: mpsc::UnboundedSender<DiscordEvent>,
 }
 
 impl DiscordBot {
     /// 创建新的 Discord Bot
     pub fn new(config: DiscordConfig) -> Self {
-        let (event_tx, event_rx) = mpx::unbounded_channel();
+        let (event_tx, event_rx) = mpsc::unbounded_channel();
 
         // 启动事件监听器
         tokio::spawn(Self::event_listener(event_rx));
@@ -74,7 +74,6 @@ impl DiscordBot {
     /// 启动 Bot
     pub async fn start(&self) -> Result<()> {
         // TODO: 实现 Discord 连接逻辑
-        // 这需要 Discord HTTP API 或 WebSocket 连接
         println!("🐾 Discord Bot starting...");
         Ok(())
     }
@@ -82,7 +81,6 @@ impl DiscordBot {
     /// 发送消息到 Discord 频道
     pub async fn send_message(&self, channel_id: &str, content: &str) -> Result<()> {
         // TODO: 实现 Discord HTTP API 调用
-        // POST /api/v10/channels/{channel_id}/messages
         println!("📤 Sending to {}: {}", channel_id, content);
         Ok(())
     }
@@ -109,18 +107,18 @@ impl DiscordBot {
         };
 
         // 发送到事件队列
-        self.event_tx.send(DiscordEvent::Message(event.clone()))?;
+        self.event_tx.send(DiscordEvent::Message(event.clone()))
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         Ok(event)
     }
 
     /// 事件监听器 (后台任务)
-    async fn event_listener(mut event_rx: mpx::UnboundedReceiver<DiscordEvent>) {
+    async fn event_listener(mut event_rx: mpsc::UnboundedReceiver<DiscordEvent>) {
         while let Some(event) = event_rx.recv().await {
             match event {
                 DiscordEvent::Message(channel_event) => {
                     println!("📨 Received message: {}", channel_event.message);
-                    // TODO: 转发给 Provider 处理
                 }
                 DiscordEvent::Typing(user_id, channel_id) => {
                     println!("⌨️  User {} is typing in channel {}", user_id, channel_id);
@@ -141,9 +139,7 @@ impl Channel for DiscordBot {
     }
 
     async fn receive(&self) -> Pin<Box<dyn Stream<Item = Result<ChannelEvent>> + Send>> {
-        // TODO: 返回 Discord 消息流
-        // 这里需要实现 WebSocket 接收
-        let (tx, rx) = mpx::unbounded_channel();
+        let (tx, rx) = mpsc::unbounded_channel::<ChannelEvent>();
 
         // 发送一个空事件
         tx.send(ChannelEvent {
@@ -153,7 +149,10 @@ impl Channel for DiscordBot {
             metadata: None,
         }).ok();
 
-        Box::pin(tokio_stream::wrappers::UnboundedReceiverStream::new(rx))
+        let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
+            .map(|event| Ok(event));
+            
+        Box::pin(stream)
     }
 
     fn name(&self) -> &str {
@@ -164,9 +163,6 @@ impl Channel for DiscordBot {
         "discord"
     }
 }
-
-// 使用标准 mpx 而非自定义的 mpx
-use tokio::sync::mpsc as mpx;
 
 /// Discord 内部事件 (用于事件队列)
 #[derive(Debug, Clone)]

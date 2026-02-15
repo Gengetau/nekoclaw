@@ -43,7 +43,7 @@ impl Default for AnthropicConfig {
 
 /// 🔒 SAFETY: Anthropic 聊天请求结构喵
 /// 遵循 Claude API v1 规范
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ClaudeRequest {
     /// 模型名称（例如 "claude-3-opus-20240229"）
     pub model: String,
@@ -53,7 +53,6 @@ pub struct ClaudeRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system: Option<String>,
     /// 最大生成 token 数
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: u32,
     /// 温度参数（0.0-1.0）
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -76,7 +75,7 @@ pub struct AnthropicError {
 /// 🔒 SAFETY: Anthropic 错误详情结构体喵
 #[derive(Debug, Deserialize)]
 pub struct ErrorDetail {
-    /// 错误消息
+    /// 消息
     pub message: String,
     /// 错误类型
     #[serde(rename = "type")]
@@ -98,7 +97,6 @@ pub struct ClaudeResponse {
     /// 模型名称
     pub model: String,
     /// 停止原因
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_reason: Option<String>,
     /// 使用情况
     pub usage: Usage,
@@ -111,7 +109,6 @@ pub struct ContentBlock {
     #[serde(rename = "type")]
     pub content_type: String,
     /// 文本内容
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
 }
 
@@ -119,18 +116,12 @@ pub struct ContentBlock {
 #[derive(Debug, Deserialize)]
 pub struct Usage {
     /// 输入 token 数
-    #[serde(rename = "input_tokens")]
     pub input_tokens: u32,
     /// 输出 token 数
-    #[serde(rename = "output_tokens")]
     pub output_tokens: u32,
     /// 创建 token 数（暂未使用）
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "cache_creation_input_tokens")]
     pub cache_creation_input_tokens: Option<u32>,
     /// 读取 cache token 数（暂未使用）
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "cache_read_input_tokens")]
     pub cache_read_input_tokens: Option<u32>,
 }
 
@@ -225,7 +216,7 @@ impl AnthropicClient {
 impl AnthropicClient {
     /// 🔒 SAFETY: 聊天接口喵
     /// 异常处理: 所有错误返回 ProviderError
-    pub async fn chat(&self, request: &ClaudeRequest) -> Result<ClaudeResponse, ProviderError> {
+    pub async fn chat_api(&self, request: &ClaudeRequest) -> Result<ClaudeResponse, ProviderError> {
         self.send_request_with_retry(request).await
     }
 
@@ -241,7 +232,7 @@ impl AnthropicClient {
             top_p: None,
         };
 
-        let response = self.chat(&request).await?;
+        let response = self.chat_api(&request).await?;
 
         // 提取文本内容
         response.content.get(0)
@@ -261,7 +252,7 @@ impl AnthropicClient {
             top_p: None,
         };
 
-        let response = self.chat(&request).await?;
+        let response = self.chat_api(&request).await?;
         response.content.get(0)
             .and_then(|block| block.text.as_ref())
             .ok_or_else(|| ProviderError::ApiError("No text content in response".to_string()))

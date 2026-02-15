@@ -163,7 +163,7 @@ pub trait IdentityEngine: Send + Sync {
 }
 
 // ============================================================================
-// Config Module
+// Config Structure
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,33 +175,3 @@ pub struct Config {
     pub workspace: std::path::PathBuf,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            api_key: None,
-            default_provider: "openai".to_string(),
-            default_model: "gpt-4".to_string(),
-            default_temperature: 0.7,
-            workspace: dirs::home_dir().unwrap_or_default().join(".nekoclaw/workspace"),
-        }
-    }
-}
-
-pub mod config {
-    use super::*;
-
-    pub fn load(config_dir: &std::path::Path) -> Result<Config> {
-        let config_path = config_dir.join("config.toml");
-        let content = std::fs::read_to_string(&config_path)?;
-        let config: Config = toml::from_str(&content)?;
-        Ok(config)
-    }
-
-    pub fn save(config_dir: &std::path::Path, config: &Config) -> Result<()> {
-        let config_path = config_dir.join("config.toml");
-        std::fs::create_dir_all(config_dir)?;
-        let content = toml::to_string_pretty(config)?;
-        std::fs::write(config_path, content)?;
-        Ok(())
-    }
-}
