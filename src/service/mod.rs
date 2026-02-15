@@ -24,7 +24,7 @@
 //! manager.start_all().await;
 //! ```
 
-use crate::core::traits::{Config, Result};
+use crate::core::traits::Config;
 use crate::channels::telegram::TelegramBot;
 use crate::channels::discord::DiscordBot;
 use crate::gateway::GatewayServer;
@@ -106,10 +106,10 @@ pub trait Service: Send + Sync {
     }
     
     /// 服务启动喵
-    async fn start(&mut self) -> Result<(), String>;
+    async fn start(&self) -> Result<(), String>;
     
     /// 服务停止喵
-    async fn stop(&mut self) -> Result<(), String>;
+    async fn stop(&self) -> Result<(), String>;
     
     /// 获取服务健康状态喵
     async fn health_check(&self) -> Result<(), String>;
@@ -118,7 +118,7 @@ pub trait Service: Send + Sync {
     fn state(&self) -> ServiceState;
     
     /// 设置服务状态喵
-    fn set_state(&mut self, state: ServiceState);
+    fn set_state(&self, state: ServiceState);
 }
 
 /// 服务管理器主结构喵
@@ -127,7 +127,7 @@ pub trait Service: Send + Sync {
 #[derive(Clone)]
 pub struct ServiceManager {
     /// 服务注册表喵
-    services: Arc<RwLock<HashMap<String, Box<dyn Service>>>>,
+    services: Arc<RwLock<HashMap<String, Arc<dyn Service>>>>,
     
     /// 服务状态喵
     state: Arc<RwLock<ServiceState>>,
@@ -194,7 +194,7 @@ impl ServiceManager {
     /// Result<(), ServiceError>
     /// 
     /// 🔐 PERMISSION: 仅初始化阶段喵
-    pub async fn register<S: Service + 'static>(&mut self, service: S) -> Result<(), ServiceError> {
+    pub async fn register<S: Service + 'static>(&self, service: S) -> Result<(), ServiceError> {
         let name = service.name().to_string();
         let mut services = self.services.write().await;
         
@@ -202,7 +202,7 @@ impl ServiceManager {
             return Err(ServiceError::AlreadyExists(name));
         }
         
-        services.insert(name, Box::new(service));
+        services.insert(name, Arc::new(service));
         Ok(())
     }
 
@@ -212,7 +212,7 @@ impl ServiceManager {
     /// * `name` - 服务名称喵
     /// 
     /// 🔐 PERMISSION: 仅关闭阶段喵
-    pub async fn unregister(&mut self, name: &str) -> Result<(), ServiceError> {
+    pub async fn unregister(&self, name: &str) -> Result<(), ServiceError> {
         let mut services = self.services.write().await;
         
         if !services.contains_key(name) {
@@ -221,6 +221,20 @@ impl ServiceManager {
         
         services.remove(name);
         Ok(())
+    }
+
+    /// 获取服务喵
+    /// 
+    /// ## Arguments
+    /// * `name` - 服务名称喵
+    /// 
+    /// ## Returns
+    /// Option<Arc<dyn Service>>
+    /// 
+    /// 🔐 PERMISSION: 公开接口喵
+    pub async fn get(&self, name: &str) -> Option<Arc<dyn Service>> {
+        let services = self.services.read().await;
+        services.get(name).cloned()
     }
 
     /// 检查服务是否存在喵
@@ -241,7 +255,7 @@ impl ServiceManager {
     /// Result<(), ServiceError>
     /// 
     /// 🔐 PERMISSION: 启动阶段喵
-    pub async fn start_all(&mut self) -> Result<(), ServiceError> {
+    pub async fn start_all(&self) -> Result<(), ServiceError> {
         self.set_state(ServiceState::Starting).await;
         
         // 按依赖顺序启动服务喵
@@ -261,14 +275,22 @@ impl ServiceManager {
     /// * `name` - 服务名称喵
     /// 
     /// 🔐 PERMISSION: 启动阶段喵
-    pub async fn start(&mut self, name: &str) -> Result<(), ServiceError> {
-        let mut services = self.services.write().await;
-        let service = services.get_mut(name)
+    pub async fn start(&self, name: &str) -> Result<(), ServiceError> {
+        let service = self.get(name).await
             .ok_or_else(|| ServiceError::NotRegistered(name.to_string()))?;
         
-        // 检查状态喵
-        if service.state() == ServiceState::Running {
-            return Ok(());
+        // 检查依赖是否已启动喵
+        for dep in service.dependencies() {
+            let dep_service = self.get(&dep).await
+                .ok_or_else(|| ServiceError::StartFailed(format!(
+                    "Dependency '{}' not found for service '{}'", dep, name
+                )))?;
+            
+            if dep_service.state() != ServiceState::Running {
+                return Err(ServiceError::StartFailed(format!(
+                    "Dependency '{}' not running for service '{}'", dep, name
+                )));
+            }
         }
 
         // 启动服务喵
@@ -277,8 +299,6 @@ impl ServiceManager {
             .map_err(|e| ServiceError::StartFailed(e))?;
         
         service.set_state(ServiceState::Running);
-        info!("Service '{}' started successfully", name);
-        
         Ok(())
     }
 
@@ -288,47 +308,15 @@ impl ServiceManager {
     /// Result<(), ServiceError>
     /// 
     /// 🔐 PERMISSION: 关闭阶段喵
-    pub async fn stop_all(&mut self) -> Result<(), ServiceError> {
+    pub async fn stop_all(&self) -> Result<(), ServiceError> {
         self.set_state(ServiceState::Stopping).await;
         
         // 按依赖顺序的逆序停止服务喵
-        let mut service_names = self.get_topological_order().await?;
-        service_names.reverse();
-        
-        for name in service_names {
-            self.stop(&name).await?;
-        }
-        
-        self.set_state(ServiceState::Stopped).await;
-        Ok(())
-    }
-
-    /// 停止单个服务喵
-    /// 
-    /// ## Arguments
-    /// * `name` - 服务名称喵
-    pub async fn stop(&mut self, name: &str) -> Result<(), ServiceError> {
-        let mut services = self.services.write().await;
-        let service = services.get_mut(name)
-            .ok_or_else(|| ServiceError::NotRegistered(name.to_string()))?;
-            
-        if service.state() == ServiceState::Stopped {
-            return Ok(());
-        }
-
-        service.set_state(ServiceState::Stopping);
-        service.stop().await
-            .map_err(|e| ServiceError::StopFailed(e))?;
-            
-        service.set_state(ServiceState::Stopped);
-        info!("Service '{}' stopped successfully", name);
-        
-        Ok(())
-    }
-        let reverse_order: Vec<&str> = service_names.iter().map(|s| s.as_str()).rev().collect();
+        let service_names = self.get_topological_order().await?;
+        let reverse_order: Vec<String> = service_names.into_iter().rev().collect();
         
         for name in reverse_order {
-            if let Err(e) = self.stop(name).await {
+            if let Err(e) = self.stop(&name).await {
                 log::warn!("Failed to stop service '{}': {}", name, e);
             }
         }
@@ -343,8 +331,8 @@ impl ServiceManager {
     /// * `name` - 服务名称喵
     /// 
     /// 🔐 PERMISSION: 关闭阶段喵
-    pub async fn stop(&mut self, name: &str) -> Result<(), ServiceError> {
-        let mut service = self.get(name).await
+    pub async fn stop(&self, name: &str) -> Result<(), ServiceError> {
+        let service = self.get(name).await
             .ok_or_else(|| ServiceError::NotRegistered(name.to_string()))?;
         
         if service.state() == ServiceState::Stopped {
@@ -358,11 +346,6 @@ impl ServiceManager {
             .map_err(|e| ServiceError::StopFailed(e))?;
         
         service.set_state(ServiceState::Stopped);
-        
-        // 更新注册表喵
-        let mut services = self.services.write().await;
-        services.insert(name.to_string(), service);
-        
         Ok(())
     }
 
@@ -372,7 +355,7 @@ impl ServiceManager {
     /// * `name` - 服务名称喵
     /// 
     /// 🔐 PERMISSION: 管理操作喵
-    pub async fn restart(&mut self, name: &str) -> Result<(), ServiceError> {
+    pub async fn restart(&self, name: &str) -> Result<(), ServiceError> {
         self.stop(name).await?;
         self.start(name).await?;
         Ok(())
@@ -381,7 +364,7 @@ impl ServiceManager {
     /// 重启所有服务喵
     /// 
     /// 🔐 PERMISSION: 管理操作喵
-    pub async fn restart_all(&mut self) -> Result<(), ServiceError> {
+    pub async fn restart_all(&self) -> Result<(), ServiceError> {
         self.stop_all().await?;
         self.start_all().await?;
         Ok(())
@@ -447,30 +430,40 @@ impl ServiceManager {
     }
 
     /// 启动 Graceful Shutdown 监听喵
-    pub async fn listen_for_shutdown(&self) {
-        let mut manager = self.clone();
-        tokio::spawn(async move {
-            tokio::signal::ctrl_c().await.expect("Failed to listen for Ctrl+C");
-            info!("Received shutdown signal (Ctrl+C)");
-            manager.shutdown().await;
-        });
+    /// 
+    /// ## Arguments
+    /// * `signals` - 要监听的信号列表喵
+    /// 
+    /// 🔐 PERMISSION: 信号处理喵
+    pub async fn listen_for_shutdown(&self, signals: &[tokio::signal::unix::SignalKind]) {
+        for signal_kind in signals {
+            let signal = *signal_kind;
+            let manager = self.clone();
+            tokio::spawn(async move {
+                signal::unix::signal(signal).unwrap()
+                    .recv().await;
+                
+                log::info!("Received shutdown signal");
+                manager.shutdown().await;
+            });
+        }
     }
 
     /// 执行 Graceful Shutdown喵
     /// 
     /// 🔐 PERMISSION: 关闭阶段喵
-    pub async fn shutdown(&mut self) {
-        info!("Starting graceful shutdown...");
+    pub async fn shutdown(&self) {
+        log::info!("Starting graceful shutdown...");
         
         // 设置关闭标志喵
         *self.shutting_down.write().await = true;
         
         // 停止所有服务喵
         if let Err(e) = self.stop_all().await {
-            error!("Failed to stop services during shutdown: {}", e);
+            log::error!("Failed to stop services during shutdown: {}", e);
         }
         
-        info!("Graceful shutdown complete");
+        log::info!("Graceful shutdown complete");
     }
 
     /// 获取拓扑排序顺序喵

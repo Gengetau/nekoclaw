@@ -404,10 +404,11 @@ pub async fn create_auth_manager_from_profiles(
             .find(|p| p.name == name && p.enabled)
             .ok_or_else(|| AuthError::ConfigError(format!("Profile '{}' not found or disabled", name)))?
     } else if let Some(default) = &profiles.default_profile {
-        profiles.profiles.iter()
-            .find(|p| &p.name == default && p.enabled)
-            .unwrap_or_else(|| profiles.profiles.first()
-                .ok_or_else(|| AuthError::ConfigError("No profiles available".to_string()))?)
+        match profiles.profiles.iter().find(|p| &p.name == default && p.enabled) {
+            Some(p) => p,
+            None => profiles.profiles.first()
+                .ok_or_else(|| AuthError::ConfigError("No profiles available".to_string()))?
+        }
     } else {
         profiles.profiles.first()
             .ok_or_else(|| AuthError::ConfigError("No profiles available".to_string()))?

@@ -21,6 +21,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 use tracing::info;
 use rand::Rng;
+use tracing::{info, debug};
 
 use tracing::info;
 
@@ -187,13 +188,14 @@ impl PairingManager {
             PairingStatus::Pending => {
                 // 配对成功
                 let session_token = Uuid::new_v4().to_string();
+                let device_name_clone = device_name.as_ref().cloned().unwrap_or_else(|| "unknown".to_string());
 
                 let updated_info = PairingInfo {
                     code: code.to_string(),
                     created_at: pairing.created_at,
                     status: PairingStatus::Paired {
                         session_token: session_token.clone(),
-                        device_name: device_name.unwrap_or_else(|| "unknown".to_string()),
+                        device_name: device_name_clone.clone(),
                     },
                     device_name,
                 };

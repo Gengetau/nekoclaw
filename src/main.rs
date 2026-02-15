@@ -13,6 +13,7 @@
 
 use clap::{Parser, Subcommand, ArgAction};
 use std::path::PathBuf;
+use tracing::{info, debug, error, warn};
 
 mod core;
 mod providers;
@@ -25,7 +26,7 @@ mod service;
 mod auth;
 
 // 使用别名简化引用
-use core::traits::{Config, Result};
+use core::traits::*;
 use service::{ServiceManager, ServiceState};
 use memory::MemoryManager;
 use providers::ProviderManager;
@@ -247,9 +248,9 @@ async fn main() -> Result<()> {
     debug!("Debug mode enabled");
 
     // 展开路径喵
-    let config_path = expand_path(cli.config_dir)?;
-    let config_file = cli.config
-        .map(|p| expand_path(p))
+    let config_path = expand_path(cli.config_dir.clone())?;
+    let config_file = cli.config.clone()
+        .map(expand_path)
         .transpose()?
         .unwrap_or_else(|| config_path.join("config.toml"));
 

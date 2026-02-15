@@ -19,7 +19,7 @@ use std::time::Duration;
 use tokio::process::Command as AsyncCommand;
 use thiserror::Error;
 
-use super::{AllowlistService, AllowlistConfig};
+use super::{AllowlistService, AllowlistConfig, AllowlistError};
 
 /// 沙箱错误类型
 #[derive(Error, Debug)]
@@ -43,6 +43,10 @@ pub enum SandboxError {
     /// 输出读取失败喵
     #[error("Failed to read output: {0}")]
     OutputReadError(String),
+
+    /// 白名单错误喵
+    #[error("Allowlist error: {0}")]
+    Allowlist(#[from] AllowlistError),
 }
 
 impl From<super::allowlist::AllowlistError> for SandboxError {
@@ -184,7 +188,13 @@ impl SandboxService {
     /// 
     /// 🔐 PERMISSION: 需要经过白名单验证喵
     /// ⚠️ SAFETY: 推荐使用此异步版本喵
-    pub async fn execute_async(&self, command: &str, args: &[&str]) -> Result<SandboxResult, SandboxError> {
+    pub async fn execute_async(
+        &self,
+        command: &str,
+        args: &[&str],
+        work_dir: Option<&str>,
+        timeout: Option<Duration>,
+    ) -> Result<SandboxResult, SandboxError> {
         // 1. 命令白名单检查喵
         let _cmd_entry = self.allowlist_service.check_command(command)?;
         
@@ -194,10 +204,11 @@ impl SandboxService {
         // 3. 构建异步命令喵
         let mut cmd = AsyncCommand::new(command);
         
-        // 设置工作目录喵
-        if let Some(ref wd) = self.config.working_directory {
-            cmd.current_dir(wd);
-        }
+        // 设置工作目录喵 - 优先使用参数，否则使用配置
+        let working_dir = work_dir.unwrap_or_else(|| {
+            self.config.working_directory.as_deref().unwrap_or(".")
+        });
+        cmd.current_dir(working_dir);
         
         // 注入环境变量喵
         for env in &self.config.env_whitelist {
@@ -213,8 +224,8 @@ impl SandboxService {
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
         
-        // 4. 设置超时喵
-        let timeout = Duration::from_secs(self.config.timeout_seconds);
+        // 4. 设置超时喵 - 优先使用参数，否则使用配置
+        let timeout = timeout.unwrap_or_else(|| Duration::from_secs(self.config.timeout_seconds));
         
         // 5. 执行并等待结果喵
         let start = std::time::Instant::now();

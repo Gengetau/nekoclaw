@@ -9,7 +9,7 @@
 //! - 集成安全消息过滤喵
 
 use teloxide::prelude::*;
-use teloxide::types::Update;
+use teloxide::types::{Update, ChatId, UpdateKind};
 use futures::Stream;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -104,9 +104,9 @@ impl TelegramBot {
     /// 
     /// 🔐 PERMISSION: 需要 Admin 权限喵
     pub fn add_allowed_chat_id(&mut self, chat_id: i64) {
-        let mut set = (*self.allowed_chat_ids).clone();
-        set.insert(chat_id);
-        self.allowed_chat_ids = Arc::new(set);
+        let mut new_set = (*self.allowed_chat_ids).clone();
+        new_set.insert(chat_id);
+        self.allowed_chat_ids = Arc::new(new_set);
     }
 
     /// 发送消息喵
@@ -270,26 +270,29 @@ impl TryFrom<Update> for TelegramEvent {
     fn try_from(update: Update) -> Result<Self, Self::Error> {
         let timestamp = chrono::Utc::now();
         
-        // 获取消息喵 - teloxide 0.13 使用 kind 匹配
+        // 获取消息喵 - teloxide 0.13 使用 kind 访问
         let message = match update.kind {
-            teloxide::types::UpdateKind::Message(m) => m,
-            _ => return Err(TelegramError::ParseError("Not a message update".to_string())),
+            UpdateKind::Message(m) => m,
+            UpdateKind::EditedMessage(m) => m,
+            UpdateKind::ChannelPost(m) => m,
+            UpdateKind::EditedChannelPost(m) => m,
+            _ => return Err(TelegramError::ParseError("No message".to_string())),
         };
         
         // 获取 Chat ID 和 User ID 喵
         let chat_id = message.chat.id.0;
         let user_id = message.from()
-            .map(|u| u.id.0)
+            .map(|u| u.id.0 as i64)
             .unwrap_or(0);
         let username = message.from()
-            .and_then(|u| u.username.clone());
+            .and_then(|u| u.username.as_ref().map(|s| s.clone()));
         
         if let Some(text) = message.text() {
             // 检查是否为命令喵
             if text.starts_with('/') {
                 let parts: Vec<&str> = text.splitn(2, ' ').collect();
                 let command = parts[0].trim_start_matches('/').to_string();
-                let args = if parts.len() > 1 {
+                let args: Vec<String> = if parts.len() > 1 {
                     parts[1].split_whitespace().map(|s| s.to_string()).collect()
                 } else {
                     vec![]
