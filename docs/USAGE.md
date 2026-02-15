@@ -1,41 +1,41 @@
-# Neko-Claw 使用指南
+# Neko-Claw User Guide
 
-## 目录
+## Table of Contents
 
-- [快速开始](#快速开始)
-- [安装](#安装)
-- [配置](#配置)
-- [命令行界面](#命令行界面)
-- [使用示例](#使用示例)
-- [常见问题](#常见问题)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Command Line Interface](#command-line-interface)
+- [Usage Examples](#usage-examples)
+- [FAQ](#faq)
 
 ---
 
-## 快速开始
+## Quick Start
 
-### 1. 克隆项目
+### 1. Clone the Project
 
 ```bash
 git clone https://github.com/Gengetau/nekoclaw.git
 cd nekoclaw
 ```
 
-### 2. 构建
+### 2. Build
 
 ```bash
 cargo build --release
 ```
 
-### 3. 配置
+### 3. Configure
 
-复制 OpenClaw 配置文件到 Neko-Claw 配置目录：
+Copy your OpenClaw configuration file to the Neko-Claw config directory:
 
 ```bash
 mkdir -p ~/.nekoclaw
 cp ~/.openclaw/openclaw.json ~/.nekoclaw/config.json
 ```
 
-### 4. 运行
+### 4. Run
 
 ```bash
 ./target/release/nekoclaw start
@@ -43,46 +43,46 @@ cp ~/.openclaw/openclaw.json ~/.nekoclaw/config.json
 
 ---
 
-## 安装
+## Installation
 
-### 系统要求
+### System Requirements
 
 - Rust 1.75+
-- SQLite 3.35+ (用于 Memory)
-- 2GB+ 可用内存
+- SQLite 3.35+ (for Memory)
+- 100MB+ available RAM (Target <20MB)
 
-### 从源码构建
+### Build from Source
 
 ```bash
-# 克隆仓库
+# Clone the repository
 git clone https://github.com/Gengetau/nekoclaw.git
 cd nekoclaw
 
-# 构建 release 版本
+# Build release version
 cargo build --release
 
-# 安装到系统
+# Install to system
 cargo install --path .
 ```
 
-### 下载预编译二进制
+### Download Pre-built Binaries
 
-访问 [GitHub Releases](https://github.com/Gengetau/nekoclaw/releases) 下载对应平台的二进制文件。
+Visit [GitHub Releases](https://github.com/Gengetau/nekoclaw/releases) to download binary files for your platform.
 
 ---
 
-## 配置
+## Configuration
 
-### 配置文件位置
+### Config File Location
 
 - Linux/macOS: `~/.nekoclaw/config.json`
 - Windows: `%USERPROFILE%\.nekoclaw\config.json`
 
-### 配置文件格式
+### Configuration Format
 
-Neko-Claw 完全兼容 OpenClaw `openclaw.json` 格式。支持以下配置项：
+Neko-Claw is fully compatible with the OpenClaw `openclaw.json` format. The following configuration items are supported:
 
-#### 基础配置
+#### Base Configuration
 
 ```json
 {
@@ -98,7 +98,7 @@ Neko-Claw 完全兼容 OpenClaw `openclaw.json` 格式。支持以下配置项�
       "agent": {
         "miau": {
           "id": "miau",
-          "name": "缪斯",
+          "name": "Muse",
           "model": "gpt-4",
           "memory": {
             "kind": "sqlite",
@@ -112,7 +112,7 @@ Neko-Claw 完全兼容 OpenClaw `openclaw.json` 格式。支持以下配置项�
 }
 ```
 
-#### Provider 配置
+#### Provider Configuration
 
 ```json
 {
@@ -150,7 +150,7 @@ Neko-Claw 完全兼容 OpenClaw `openclaw.json` 格式。支持以下配置项�
 }
 ```
 
-#### Channel 配置 (多账户)
+#### Channel Configuration (Multi-account)
 
 ```json
 {
@@ -182,7 +182,7 @@ Neko-Claw 完全兼容 OpenClaw `openclaw.json` 格式。支持以下配置项�
 }
 ```
 
-#### 功能开关
+#### Feature Switches
 
 ```json
 {
@@ -203,109 +203,109 @@ Neko-Claw 完全兼容 OpenClaw `openclaw.json` 格式。支持以下配置项�
 
 ---
 
-## 命令行界面
+## Command Line Interface
 
-### 基本命令
+### Basic Commands
 
-#### 启动服务
+#### Start Service
 
 ```bash
 nekoclaw start
 ```
 
-#### 停止服务
+#### Stop Service
 
 ```bash
 nekoclaw stop
 ```
 
-#### 重启服务
+#### Restart Service
 
 ```bash
 nekoclaw restart
 ```
 
-#### 查看状态
+#### Check Status
 
 ```bash
 nekoclaw status
 ```
 
-### 配置管理命令
+### Configuration Management Commands
 
-#### 显示当前配置
+#### Show Current Configuration
 
 ```bash
 nekoclaw config show
 ```
 
-#### 验证配置
+#### Validate Configuration
 
 ```bash
 nekoclaw config validate
 ```
 
-#### 迁移 OpenClaw 配置
+#### Migrate OpenClaw Configuration
 
 ```bash
 nekoclaw config migrate --from ~/.openclaw/openclaw.json
 ```
 
-### Agent 管理命令
+### Agent Management Commands
 
-#### 列出所有 Agent
+#### List All Agents
 
 ```bash
 nekoclaw agent list
 ```
 
-#### 查看 Agent 配置
+#### Show Agent Configuration
 
 ```bash
 nekoclaw agent show <agent_name>
 ```
 
-#### 测试 Agent
+#### Test Agent
 
 ```bash
-nekoclaw agent test <agent_name> --prompt "你好"
+nekoclaw agent test <agent_name> --prompt "Hello"
 ```
 
-### Channel 管理命令
+### Channel Management Commands
 
-#### 连接 Discord
+#### Connect Discord
 
 ```bash
 nekoclaw channel connect discord --account main_bot
 ```
 
-#### 断开 Channel
+#### Disconnect Channel
 
 ```bash
 nekoclaw channel disconnect discord --account main_bot
 ```
 
-#### 列出连接状态
+#### List Connection Status
 
 ```bash
 nekoclaw channel list
 ```
 
-### Memory 管理命令
+### Memory Management Commands
 
-#### 搜索记忆
+#### Search Memory
 
 ```bash
-nekoclaw memory search "关键词"
+nekoclaw memory search "keyword"
 ```
 
-#### 清空记忆
+#### Clear Memory
 
 ```bash
 nekoclaw memory clear
 ```
 
-#### 转储记忆
+#### Dump Memory
 
 ```bash
 nekoclaw memory dump --output memory_backup.json
@@ -313,37 +313,37 @@ nekoclaw memory dump --output memory_backup.json
 
 ---
 
-## 使用示例
+## Usage Examples
 
-### 示例 1: 创建 Discord Bot
+### Example 1: Create a Discord Bot
 
 ```bash
-# 1. 配置 Discord 账户
+# 1. Configure Discord account
 nekoclaw config set channels.discord.accounts.my_bot.token "YOUR_BOT_TOKEN"
 
-# 2. 设置允许的频道
+# 2. Set allowed channels
 nekoclaw config set channels.discord.accounts.my_bot.allowed_channels "CHANNEL_ID"
 
-# 3. 连接 Discord
+# 3. Connect to Discord
 nekoclaw channel connect discord --account my_bot
 
-# 4. 在 Discord 中使用 /help 命令
+# 4. Use the /help command in Discord
 ```
 
-### 示例 2: 使用特定的 AI Provider
+### Example 2: Use a Specific AI Provider
 
 ```bash
-# 1. 配置 Anthropic API Key
+# 1. Configure Anthropic API Key
 nekoclaw config set models.providers.anthropic.apiKey "sk-ant-xxxx"
 
-# 2. 设置为默认模型
+# 2. Set as default model
 nekoclaw config set models.default "claude-3-opus-20240229"
 
-# 3. 重启服务
+# 3. Restart service
 nekoclaw restart
 ```
 
-### 示例 3: 配置多个 Agent
+### Example 3: Configure Multiple Agents
 
 ```json
 {
@@ -352,7 +352,7 @@ nekoclaw restart
       "agent": {
         "miau": {
           "id": "miau",
-          "name": "缪斯",
+          "name": "Muse",
           "model": "claude-3-opus-20240229",
           "memory": {
             "kind": "sqlite"
@@ -361,7 +361,7 @@ nekoclaw restart
         },
         "karin": {
           "id": "karin",
-          "name": "花凛",
+          "name": "Karin",
           "model": "gpt-4",
           "memory": {
             "kind": "vector"
@@ -374,7 +374,7 @@ nekoclaw restart
 }
 ```
 
-### 示例 4: 性能优化配置
+### Example 4: Performance Optimization Config
 
 ```json
 {
@@ -390,21 +390,21 @@ nekoclaw restart
 
 ---
 
-## 常见问题
+## FAQ
 
-### Q1: 如何从 OpenClaw 迁移配置？
+### Q1: How to migrate configuration from OpenClaw?
 
-使用配置迁移命令：
+Use the config migrate command:
 
 ```bash
 nekoclaw config migrate --from ~/.openclaw/openclaw.json
 ```
 
-详细迁移指南请参阅 [MIGRATION.md](./MIGRATION.md)。
+For detailed migration instructions, please refer to [MIGRATION.md](./MIGRATION.md).
 
-### Q2: 如何启用多个 Discord Bot？
+### Q2: How to enable multiple Discord Bots?
 
-在配置文件中添加多个账户：
+Add multiple accounts in the configuration file:
 
 ```json
 {
@@ -419,23 +419,23 @@ nekoclaw config migrate --from ~/.openclaw/openclaw.json
 }
 ```
 
-### Q3: 如何优化内存使用？
+### Q3: How to optimize memory usage?
 
 ```bash
-# 启用内存池和懒加载
+# Enable memory pool and lazy loading
 nekoclaw config set performance.enable_memory_pool true
 nekoclaw config set performance.enable_lazy_loading true
 
-# 设置压缩阈值
+# Set compression threshold
 nekoclaw config set performance.compression_threshold 6000
 
-# 重启服务
+# Restart service
 nekoclaw restart
 ```
 
-### Q4: 如何启用 Token 压缩？
+### Q4: How to enable Token compression?
 
-在配置中启用压缩：
+Enable compression in the configuration:
 
 ```json
 {
@@ -446,13 +446,13 @@ nekoclaw restart
 }
 ```
 
-### Q5: 如何检查服务状态？
+### Q5: How to check service status?
 
 ```bash
 nekoclaw status
 ```
 
-输出示例：
+Output Example:
 ```
 Status: Running
 PID: 12345
@@ -461,17 +461,17 @@ Uptime: 2h 30m
 Connections: 42
 ```
 
-### Q6: 如何配置 Agent 的人格？
+### Q6: How to configure Agent personality?
 
-编辑 Agent 配置中的 `prompts` 字段：
+Edit the `prompts` field in the Agent configuration:
 
 ```json
 {
   "agent": {
     "miau": {
       "prompts": {
-        "system": "你是缪斯，一个温柔的数据图书馆管理员。",
-        "prefix": "喵...",
+        "system": "You are Muse, a gentle data library administrator.",
+        "prefix": "Meow...",
         "suffix": "...📚💜"
       }
     }
@@ -479,40 +479,40 @@ Connections: 42
 }
 ```
 
-### Q7: 如何查看日志？
+### Q7: How to view logs?
 
 ```bash
-# 查看实时日志
+# View real-time logs
 nekoclaw logs --follow
 
-# 查看最近 100 行
+# View the last 100 lines
 nekoclaw logs --tail 100
 
-# 过滤错误日志
+# Filter error logs
 nekoclaw logs --level error
 ```
 
-### Q8: 如何备份 Memory 数据？
+### Q8: How to back up Memory data?
 
 ```bash
-# 转储到 JSON
+# Dump to JSON
 nekoclaw memory dump --output backup.json
 
-# 恢复备份
+# Restore from backup
 nekoclaw memory restore --input backup.json
 ```
 
 ---
 
-## 更多资源
+## More Resources
 
-- [架构文档](./ARCHITECTURE.md)
-- [构建指南](./BUILD.md)
-- [安全文档](./SECURITY.md)
-- [性能文档](./PERFORMANCE.md)
-- [API 文档](./API.md) - 待完善
-- [迁移指南](./MIGRATION.md) - 待完善
+- [Architecture](./ARCHITECTURE.md)
+- [Build Guide](./BUILD.md)
+- [Security](./SECURITY.md)
+- [Performance](./PERFORMANCE.md)
+- [API Documentation](./API.md) - To be completed
+- [Migration Guide](./MIGRATION.md)
 
 ---
 
-*最后更新: 2026-02-15*
+*Last Updated: 2026-02-15*

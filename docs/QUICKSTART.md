@@ -1,30 +1,30 @@
-# Neko-Claw 快速入门指南 🐾⚡
+# Neko-Claw Quickstart Guide 🐾⚡
 
-> 5 分钟上手高性能 Rust AI 助手框架
+> Get started with high-performance Rust AI Assistant framework in 5 minutes
 
-## 📋 目录
+## 📋 Table of Contents
 
-- [前置条件](#前置条件)
-- [安装](#安装)
-- [第一个命令](#第一个命令)
-- [配置](#配置)
-- [常见问题](#常见问题)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [First Command](#first-command)
+- [Configuration](#configuration)
+- [FAQ](#faq)
 
 ---
 
-## 前置条件
+## Prerequisites
 
-- **Rust**: 1.70+ (推荐 1.93+)
-- **系统**: Linux / macOS / Windows (WSL2)
-- **内存**: 最低 100MB RAM (目标 <20MB)
+- **Rust**: 1.70+ (Recommended 1.93+)
+- **OS**: Linux / macOS / Windows (WSL2)
+- **Memory**: Minimum 100MB RAM (Target <20MB)
 
-### 检查 Rust 版本
+### Check Rust Version
 
 ```bash
 rustc --version
 ```
 
-如果没有安装 Rust，请使用 [rustup](https://rustup.rs/) 安装：
+If Rust is not installed, please use [rustup](https://rustup.rs/) to install:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -32,113 +32,113 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 ---
 
-## 安装
+## Installation
 
-### 方式 1: 克隆仓库（推荐）
+### Method 1: Clone Repository (Recommended)
 
 ```bash
-# 克隆仓库
-git clone https://github.com/your-org/nekoclaw.git
+# Clone the repository
+git clone https://github.com/Gengetau/nekoclaw.git
 cd nekoclaw
 
-# 构建发布版本
+# Build release version
 cargo build --release
 
-# 二进制文件位置
+# Binary file location
 ./target/release/nekoclaw --help
 ```
 
-### 方式 2: Cargo 安装（未来）
+### Method 2: Cargo Installation (Upcoming)
 
 ```bash
-# 即将支持
+# Coming soon
 cargo install nekoclaw
 ```
 
-### 构建优化
+### Build Optimization
 
-为了获得最小二进制尺寸，使用以下优化：
+To achieve the smallest binary size, use the following optimizations:
 
 ```bash
-# 1. 创建发布构建
+# 1. Create a release build
 cargo build --release
 
-# 2. Strip 二进制（可选，进一步减少体积）
+# 2. Strip binary (optional, further reduces size)
 strip target/release/nekoclaw
 
-# 3. 检查二进制大小
+# 3. Check binary size
 ls -lh target/release/nekoclaw
 ```
 
-**预期尺寸**: <2.5MB
+**Expected Size**: <2.5MB
 
 ---
 
-## 第一个命令
+## First Command
 
-### 1. 查看帮助
+### 1. View Help
 
 ```bash
 nekoclaw --help
 ```
 
-输出：
+Output:
 
 ```
-Neko-Claw v0.1.0 - 高性能 Rust AI 助手框架
+Neko-Claw v0.1.0 - High-performance Rust AI Assistant Framework
 
 USAGE:
     nekoclaw [OPTIONS] <SUBCOMMAND>
 
 OPTIONS:
-    -c, --config <CONFIG>    配置文件路径 (默认: ~/.nekoclaw/config.json)
-    -v, --verbose           详细输出
-    -h, --help              显示帮助信息
+    -c, --config <CONFIG>    Config file path (Default: ~/.nekoclaw/config.json)
+    -v, --verbose           Detailed output
+    -h, --help              Show help information
 
 SUBCOMMANDS:
-    start       启动 Neko-Claw 服务
-    status      查看运行状态
-    stop        停止服务
-    restart     重启服务
-    config      配置管理
-    test        运行测试
-    version     显示版本信息
+    start       Start Neko-Claw service
+    status      Check running status
+    stop        Stop service
+    restart     Restart service
+    config      Config management
+    test        Run tests
+    version     Show version information
 ```
 
-### 2. 查看版本
+### 2. Check Version
 
 ```bash
 nekoclaw version
 ```
 
-输出：
+Output:
 
 ```
 Neko-Claw v0.1.0
 Rust: 1.93.1
 ```
 
-### 3. 运行测试
+### 3. Run Tests
 
 ```bash
 nekoclaw test
 ```
 
-这将运行所有单元测试和集成测试。
+This will run all unit tests and integration tests.
 
 ---
 
-## 配置
+## Configuration
 
-### 1. 配置文件位置
+### 1. Config File Location
 
-默认配置文件：`~/.nekoclaw/config.json`
+Default config file: `~/.nekoclaw/config.json`
 
-如果不存在，首次启动时会自动创建。
+If it doesn't exist, it will be automatically created on the first start.
 
-### 2. 最小配置示例
+### 2. Minimal Configuration Example
 
-创建 `~/.nekoclaw/config.json`：
+Create `~/.nekoclaw/config.json`:
 
 ```json
 {
@@ -173,31 +173,31 @@ nekoclaw test
 }
 ```
 
-### 3. 从 OpenClaw 迁移配置
+### 3. Migrate Config from OpenClaw
 
-如果已有 OpenClaw 配置，直接复制：
+If you have an existing OpenClaw configuration, you can copy it directly:
 
 ```bash
-# 复制 OpenClaw 配置
+# Copy OpenClaw configuration
 cp ~/.openclaw/openclaw.json ~/.nekoclaw/config.json
 
-# 验证配置（可选）
+# Validate configuration (optional)
 nekoclaw config validate
 ```
 
-详细迁移指南请参考：[MIGRATION.md](./MIGRATION.md)
+For a detailed migration guide, please refer to: [MIGRATION.md](./MIGRATION.md)
 
 ---
 
-## 启动服务
+## Start Service
 
-### 前台运行（开发模式）
+### Run in Foreground (Development Mode)
 
 ```bash
 nekoclaw start
 ```
 
-输出：
+Output:
 
 ```
 [INFO] Neko-Claw v0.1.0 starting...
@@ -207,24 +207,24 @@ nekoclaw start
 [INFO] Neko-Claw is running! 🚀
 ```
 
-### 后台运行（生产模式）
+### Run in Background (Production Mode)
 
 ```bash
-# 使用 nohup
+# Using nohup
 nohup nekoclaw start > nekoclaw.log 2>&1 &
 
-# 或使用 systemd（推荐）
+# Or use systemd (Recommended)
 sudo systemctl enable nekoclaw
 sudo systemctl start nekoclaw
 ```
 
-### 查看运行状态
+### Check Running Status
 
 ```bash
 nekoclaw status
 ```
 
-输出：
+Output:
 
 ```
 Neko-Claw Status:
@@ -237,61 +237,61 @@ Neko-Claw Status:
 
 ---
 
-## 常见问题
+## FAQ
 
-### ❓ 为什么启动失败？
+### ❓ Why did the startup fail?
 
-**可能原因 1: 配置文件缺失或格式错误**
+**Possible Cause 1: Missing or malformed config file**
 
 ```bash
-# 验证配置
+# Validate config
 nekoclaw config validate
 ```
 
-**可能原因 2: 端口被占用**
+**Possible Cause 2: Port is already in use**
 
-修改配置文件中的端口：
+Change the port in the configuration file:
 
 ```json
 {
   "gateway": {
-    "port": 9000  // 改为其他端口
+    "port": 9000  // Change to another port
   }
 }
 ```
 
-**可能原因 3: API Key 无效**
+**Possible Cause 3: Invalid API Key**
 
-检查 `models.providers.*.apiKey` 是否正确。
+Check if `models.providers.*.apiKey` is correct.
 
 ---
 
-### ❓ 如何查看详细日志？
+### ❓ How to view detailed logs?
 
-使用 `--verbose` 标志：
+Use the `--verbose` flag:
 
 ```bash
 nekoclaw start --verbose
 ```
 
-或查看日志文件：
+Or check the log file:
 
 ```bash
-# 默认日志位置
+# Default log location
 tail -f ~/.nekoclaw/nekoclaw.log
 ```
 
 ---
 
-### ❓ 内存使用超过 20MB？
+### ❓ Memory usage exceeds 20MB?
 
-检查是否有未关闭的会话：
+Check if there are any unclosed sessions:
 
 ```bash
 nekoclaw config list-sessions
 ```
 
-清理过期会话：
+Clean up expired sessions:
 
 ```bash
 nekoclaw config cleanup
@@ -299,51 +299,51 @@ nekoclaw config cleanup
 
 ---
 
-### ❓ 如何升级到最新版本？
+### ❓ How to upgrade to the latest version?
 
 ```bash
-# 拉取最新代码
+# Pull latest code
 git pull origin main
 
-# 重新构建
+# Rebuild
 cargo build --release
 
-# 重启服务
+# Restart service
 nekoclaw restart
 ```
 
 ---
 
-### ❓ 支持哪些 Provider？
+### ❓ Which Providers are supported?
 
-当前支持的 Provider：
+Currently supported Providers:
 
 - ✅ OpenAI
 - ✅ Anthropic (Claude)
 - ✅ OpenRouter
-- ✅ NVIDIA (推荐，高性能)
+- ✅ NVIDIA (Recommended, High-performance)
 
-查看完整列表：[USAGE.md](./USAGE.md)
-
----
-
-### ❓ 如何联系支持？
-
-- 📚 [文档中心](https://docs.nekoclaw.ai)
-- 💬 [Discord 社区](https://discord.gg/nekoclaw)
-- 🐛 [GitHub Issues](https://github.com/your-org/nekoclaw/issues)
+View the full list: [USAGE.md](./USAGE.md)
 
 ---
 
-## 下一步
+### ❓ How to contact support?
 
-- 📖 阅读完整使用指南：[USAGE.md](./USAGE.md)
-- 🔧 配置迁移指南：[MIGRATION.md](./MIGRATION.md)
-- 🏗️ 架构文档：[../ARCHITECTURE.md](../ARCHITECTURE.md)
-- 🔒 安全文档：[./SECURITY.md](./SECURITY.md)
+- 📚 [Documentation Center](https://docs.nekoclaw.ai)
+- 💬 [Discord Community](https://discord.gg/nekoclaw)
+- 🐛 [GitHub Issues](https://github.com/Gengetau/nekoclaw/issues)
 
 ---
 
-**祝使用愉快！** 🐾⚡
+## Next Steps
 
-*Neko-Claw - 零开销 Rust AI 助手框架*
+- 📖 Read the full User Guide: [USAGE.md](./USAGE.md)
+- 🔧 Config Migration Guide: [MIGRATION.md](./MIGRATION.md)
+- 🏗️ Architecture Doc: [../ARCHITECTURE.md](../ARCHITECTURE.md)
+- 🔒 Security Doc: [./SECURITY.md](./SECURITY.md)
+
+---
+
+**Happy Using!** 🐾⚡
+
+*Neko-Claw - Zero-overhead Rust AI Assistant Framework*

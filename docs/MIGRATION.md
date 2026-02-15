@@ -1,96 +1,96 @@
-# Neko-Claw 迁移指南
+# Neko-Claw Migration Guide
 
-## OpenClaw → Neko-Claw 配置迁移手册
+## OpenClaw → Neko-Claw Config Migration Manual
 
-> 🔐 本文档由花凛 (Fiora) 编写 - 2026-02-15
-
----
-
-## 目录
-
-1. [概述](#概述)
-2. [为什么迁移](#为什么迁移)
-3. [前置条件](#前置条件)
-4. [配置文件迁移](#配置文件迁移)
-5. [Identity 文件迁移](#identity-文件迁移)
-6. [常见问题](#常见问题)
-7. [回滚方案](#回滚方案)
+> 🔐 This document was written by Karin (Fiora) - 2026-02-15
 
 ---
 
-## 概述
+## Table of Contents
 
-本文档指导用户将现有的 OpenClaw 配置平滑迁移到 Neko-Claw。
-
-Neko-Claw 是 OpenClaw 的高性能 Rust 重写版本，提供：
-- **更低的资源占用**: <20MB 内存 vs OpenClaw 的 1.5GB
-- **更快的启动速度**: <100ms 启动时间
-- **更强的安全性**: 内置沙箱和加密模块
+1. [Overview](#overview)
+2. [Why Migrate?](#why-migrate)
+3. [Prerequisites](#prerequisites)
+4. [Config File Migration](#config-file-migration)
+5. [Identity File Migration](#identity-file-migration)
+6. [FAQ](#faq)
+7. [Rollback Plan](#rollback-plan)
 
 ---
 
-## 为什么迁移
+## Overview
 
-### 性能对比
+This document guides users on how to smoothly migrate their existing OpenClaw configuration to Neko-Claw.
 
-| 指标 | OpenClaw | Neko-Claw | 提升 |
+Neko-Claw is a high-performance Rust rewrite of OpenClaw, offering:
+- **Lower Resource Usage**: <20MB RAM vs OpenClaw's 1.5GB.
+- **Faster Startup**: <100ms startup time.
+- **Stronger Security**: Built-in sandbox and encryption modules.
+
+---
+
+## Why Migrate?
+
+### Performance Comparison
+
+| Metrics | OpenClaw | Neko-Claw | Improvement |
 |------|----------|-----------|------|
-| 内存占用 | ~1500MB | <20MB | **75x** ⬇️ |
-| 启动时间 | ~5000ms | <100ms | **50x** ⬆️ |
-| 二进制大小 | N/A | <2.5MB | - |
-| 响应时间 | ~1000ms | <10ms | **100x** ⬆️ |
+| Memory Usage | ~1500MB | <20MB | **75x** ⬇️ |
+| Startup Time | ~5000ms | <100ms | **50x** ⬆️ |
+| Binary Size | N/A | <2.5MB | - |
+| Response Time | ~1000ms | <10ms | **100x** ⬆️ |
 
-### 功能对比
+### Feature Comparison
 
-| 功能 | OpenClaw | Neko-Claw |
+| Feature | OpenClaw | Neko-Claw |
 |------|----------|-----------|
-| Provider 支持 | ✅ | ✅ |
-| Memory 系统 | ✅ | ✅ (SQLite + Vector) |
-| 多渠道支持 | ✅ | ✅ (Discord + Telegram) |
-| Agent 集成 | ✅ | ✅ |
-| OAuth 认证 | ✅ | ✅ |
-| 安全沙箱 | ❌ | ✅ (白名单 + 注入防护) |
+| Provider Support | ✅ | ✅ |
+| Memory System | ✅ | ✅ (SQLite + Vector) |
+| Multi-channel Support | ✅ | ✅ (Discord + Telegram) |
+| Agent Integration | ✅ | ✅ |
+| OAuth Auth | ✅ | ✅ |
+| Security Sandbox | ❌ | ✅ (Whitelist + Injection Protection) |
 
 ---
 
-## 前置条件
+## Prerequisites
 
-### 系统要求
+### System Requirements
 
 ```bash
-# 最低要求
+# Minimum requirements
 - Rust 1.70+
-- 512MB 可用内存
-- 100MB 磁盘空间
+- 512MB available RAM
+- 100MB disk space
 ```
 
-### 安装 Rust (如果未安装)
+### Install Rust (if not installed)
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.cargo/env
-rustc --version  # 确认版本 >= 1.70
+rustc --version  # Confirm version >= 1.70
 ```
 
-### 备份现有配置
+### Back up Existing Config
 
-**重要**: 迁移前请备份现有配置！
+**Important**: Please back up your existing configuration before migration!
 
 ```bash
-# 备份 OpenClaw 配置
+# Back up OpenClaw config directory
 cp -r ~/.openclaw ~/.openclaw.backup.$(date +%Y%m%d)
 
-# 备份配置文件
+# Back up config file
 cp ~/openclaw.json ~/openclaw.json.backup
 ```
 
 ---
 
-## 配置文件迁移
+## Config File Migration
 
-### OpenClaw 配置结构
+### OpenClaw Config Structure
 
-OpenClaw 使用 `openclaw.json` 作为主配置文件：
+OpenClaw uses `openclaw.json` as the main configuration file:
 
 ```json
 {
@@ -135,12 +135,12 @@ OpenClaw 使用 `openclaw.json` 作为主配置文件：
 }
 ```
 
-### Neko-Claw 配置结构
+### Neko-Claw Config Structure
 
-Neko-Claw 使用 `config.toml`：
+Neko-Claw uses `config.toml` (or `config.json`):
 
 ```toml
-# Neko-Claw 配置文件示例
+# Neko-Claw Config Example
 app_name = "Neko-Claw"
 version = "0.5.0"
 
@@ -172,30 +172,30 @@ max_tokens = 4096
 temperature = 0.7
 ```
 
-### 手动迁移步骤
+### Manual Migration Steps
 
-#### 1. 创建配置目录
+#### 1. Create Config Directory
 
 ```bash
 mkdir -p ~/.nekoclaw
 cd ~/.nekoclaw
 ```
 
-#### 2. 创建 config.toml
+#### 2. Create config.toml
 
-根据你的 OpenClaw 配置，创建对应的 `config.toml`:
+Based on your OpenClaw configuration, create the corresponding `config.toml`:
 
 ```bash
-# 复制示例配置
+# Copy example config
 cp /path/to/nekoclaw/config.example.toml ~/.nekoclaw/config.toml
 
-# 编辑配置
+# Edit config
 nano ~/.nekoclaw/config.toml
 ```
 
-#### 3. 迁移 Provider 配置
+#### 3. Migrate Provider Config
 
-**OpenClaw → Neko-Claw 映射:**
+**OpenClaw → Neko-Claw Mapping:**
 
 ```toml
 # OpenClaw: models.providers.nvidia
@@ -208,9 +208,9 @@ models = ["model-1", "model-2"]
 default_model = "model-1"
 ```
 
-#### 4. 迁移 Channel 配置
+#### 4. Migrate Channel Config
 
-**Discord 迁移:**
+**Discord Migration:**
 
 ```toml
 # OpenClaw: channels.discord.accounts.{bot_name}.token
@@ -221,16 +221,16 @@ token = "YOUR_DISCORD_TOKEN"
 enabled = true
 ```
 
-**Telegram 迁移:**
+**Telegram Migration:**
 
 ```toml
 # Neko-Claw: [channel.telegram]
 [channel.telegram]
 token = "YOUR_TELEGRAM_BOT_TOKEN"
-enabled = false  # 设置为 true 启用
+enabled = false  # Set to true to enable
 ```
 
-#### 5. 迁移 Agent 配置
+#### 5. Migrate Agent Config
 
 ```toml
 # OpenClaw: agents.defaults
@@ -241,10 +241,10 @@ thinking_enabled = true
 max_tokens = 4096
 temperature = 0.7
 context_window = 8192
-session_timeout = 1800  # 30分钟
+session_timeout = 1800  # 30 minutes
 ```
 
-#### 6. 迁移 Auth 配置
+#### 6. Migrate Auth Config
 
 ```toml
 # OpenClaw: auth.profiles
@@ -260,52 +260,52 @@ enabled = true
 
 ---
 
-## Identity 文件迁移
+## Identity File Migration
 
-### 文件位置对比
+### File Location Comparison
 
-| 文件 | OpenClaw | Neko-Claw |
+| File | OpenClaw | Neko-Claw |
 |------|----------|-----------|
 | Identity | `~/.openclaw/IDENTITY.md` | `~/.nekoclaw/IDENTITY.md` |
 | Soul | `~/.openclaw/SOUL.md` | `~/.nekoclaw/SOUL.md` |
 | Agents | `~/.openclaw/AGENTS.md` | `~/.nekoclaw/AGENTS.md` |
 
-### 迁移步骤
+### Migration Steps
 
 ```bash
-# 1. 复制文件
+# 1. Copy files
 cp ~/.openclaw/IDENTITY.md ~/.nekoclaw/
 cp ~/.openclaw/SOUL.md ~/.nekoclaw/
 cp ~/.openclaw/AGENTS.md ~/.nekoclaw/
 
-# 2. 验证文件
+# 2. Verify files
 ls -la ~/.nekoclaw/*.md
 
-# 3. 检查权限
+# 3. Check permissions
 chmod 600 ~/.nekoclaw/*.md
 ```
 
-### 配置文件格式
+### Config File Formats
 
-**IDENTITY.md** - 保持不变，直接复制即可：
+**IDENTITY.md** - Keep unchanged, just copy:
 
 ```markdown
 # Identity
 ...
 
 ## Personality
-- **Name:** 你的名字
-- **Tone:** 语气风格
+- **Name:** Your Name
+- **Tone:** Style
 ```
 
-**SOUL.md** - 保持不变，直接复制即可：
+**SOUL.md** - Keep unchanged, just copy:
 
 ```markdown
 # Soul
 ...
 ```
 
-**AGENTS.md** - 保持不变，直接复制即可：
+**AGENTS.md** - Keep unchanged, just copy:
 
 ```markdown
 # Agents
@@ -314,167 +314,167 @@ chmod 600 ~/.nekoclaw/*.md
 
 ---
 
-## 迁移验证
+## Migration Verification
 
-### 运行健康检查
+### Run Health Check
 
-迁移完成后，运行健康检查验证配置：
+After migration, run the health check to verify configuration:
 
 ```bash
 cd /path/to/nekoclaw
 cargo run -- doctor --fix
 ```
 
-### 验证项目
+### Verify Project
 
 ```bash
-# 检查配置加载
+# Check config loading
 cargo run -- config --show
 
-# 检查服务状态
+# Check service status
 cargo run -- service --status
 
-# 检查所有模块
+# Check all modules
 cargo run -- status --verbose
 ```
 
-### 常见错误
+### Common Errors
 
-#### 1. API Key 无效
+#### 1. Invalid API Key
 
 ```error
 Error: Invalid API key for provider 'nvidia'
 ```
 
-**解决**: 检查 `config.toml` 中的 `api_key` 是否正确。
+**Resolution**: Check if `api_key` in `config.toml` is correct.
 
-#### 2. Discord Token 无效
+#### 2. Invalid Discord Token
 
 ```error
 Error: Invalid Discord token
 ```
 
-**解决**: 
-1. 确认 Token 是 Bot Token (以 `MTE` 开头)
-2. 检查 Token 是否在 `config.toml` 中正确配置
+**Resolution**: 
+1. Confirm the Token is a Bot Token (starting with `MTE`).
+2. Check if the Token is correctly configured in `config.toml`.
 
-#### 3. Identity 文件缺失
+#### 3. Missing Identity Files
 
 ```error
 Error: IDENTITY.md not found
 ```
 
-**解决**: 将 `IDENTITY.md` 复制到 `~/.nekoclaw/` 目录。
+**Resolution**: Copy `IDENTITY.md` to the `~/.nekoclaw/` directory.
 
 ---
 
-## 常见问题
+## FAQ
 
-### Q1: 迁移后可以继续使用 OpenClaw 吗?
+### Q1: Can I continue using OpenClaw after migration?
 
-**可以**，但建议先测试 Neko-Claw，确认功能正常后再切换。
+**Yes**, but it's recommended to test Neko-Claw first and confirm functionality before switching permanently.
 
-### Q2: 配置文件不兼容怎么办?
+### Q2: What if the config files are incompatible?
 
-Neko-Claw 提供了 **配置兼容层**，可以读取部分 OpenClaw 配置：
+Neko-Claw provides a **Config Compatibility Layer** that can read partial OpenClaw configurations:
 
 ```bash
-# 使用 OpenClaw 配置文件
+# Use OpenClaw config file
 nekoclaw --config ~/openclaw.json agent --message "hello"
 ```
 
-### Q3: 如何回滚到 OpenClaw?
+### Q3: How to roll back to OpenClaw?
 
 ```bash
-# 恢复配置备份
+# Restore config backup
 cp -r ~/.openclaw.backup.* ~/.openclaw
 
-# 删除 Neko-Claw 配置 (可选)
+# Delete Neko-Claw config (optional)
 rm -rf ~/.nekoclaw
 ```
 
-### Q4: 性能没有提升怎么办?
+### Q4: What if performance doesn't improve?
 
-1. 确保使用 Release 模式编译：
+1. Ensure you are compiling in Release mode:
    ```bash
    cargo build --release
    ```
 
-2. 检查系统资源：
+2. Check system resources:
    ```bash
    cargo run -- doctor --verbose
    ```
 
-### Q5: Docker 部署如何迁移?
+### Q5: How to migrate Docker deployment?
 
 ```dockerfile
-# 使用 Neko-Claw 镜像
+# Use Neko-Claw image
 FROM ghcr.io/gengetau/nekoclaw:latest
 
-# 挂载配置
+# Mount config
 VOLUME ["/root/.nekoclaw"]
 
-# 运行
+# Run
 CMD ["nekoclaw", "daemon", "--background"]
 ```
 
 ---
 
-## 回滚方案
+## Rollback Plan
 
-### 快速回滚
+### Quick Rollback
 
 ```bash
-# 停止 Neko-Claw
+# Stop Neko-Claw
 nekoclaw service --stop
 
-# 恢复 OpenClaw 配置
+# Restore OpenClaw config
 cp -r ~/.openclaw.backup.* ~/.openclaw
 
-# 删除 Neko-Claw 配置
+# Delete Neko-Claw config
 rm -rf ~/.nekoclaw
 
-# 重新启动 OpenClaw
+# Restart OpenClaw
 openclaw start
 ```
 
-### 配置对比表
+### Config Comparison Table
 
-| 配置项 | OpenClaw | Neko-Claw | 兼容性 |
+| Config Item | OpenClaw | Neko-Claw | Compatibility |
 |--------|----------|-----------|--------|
-| Provider API Key | ✅ | ✅ | 完全兼容 |
-| Discord Token | ✅ | ✅ | 完全兼容 |
-| Memory 数据 | ❌ | ✅ | 需要导出导入 |
-| Agent 配置 | ✅ | ✅ | 完全兼容 |
-| Auth Profiles | ✅ | ✅ | 完全兼容 |
+| Provider API Key | ✅ | ✅ | Fully Compatible |
+| Discord Token | ✅ | ✅ | Fully Compatible |
+| Memory Data | ❌ | ✅ | Requires export/import |
+| Agent Config | ✅ | ✅ | Fully Compatible |
+| Auth Profiles | ✅ | ✅ | Fully Compatible |
 
 ---
 
-## 联系支持
+## Contact Support
 
-如果迁移过程中遇到问题：
+If you encounter issues during migration:
 
-1. 查看日志: `~/.nekoclaw/logs/nekoclaw.log`
-2. 运行诊断: `nekoclaw doctor --verbose`
-3. 提交 Issue: https://github.com/Gengetau/nekoclaw/issues
-
----
-
-## 更新日志
-
-| 日期 | 版本 | 变更 |
-|------|------|------|
-| 2026-02-15 | 0.5.0 | 初始版本 |
-| 2026-02-15 | 0.5.1 | 添加 Docker 迁移说明 |
+1. View logs: `~/.nekoclaw/logs/nekoclaw.log`
+2. Run diagnostics: `nekoclaw doctor --verbose`
+3. Submit Issue: https://github.com/Gengetau/nekoclaw/issues
 
 ---
 
-**🔒 花凛的安全提示:**
+## Changelog
 
-> 迁移过程中请务必备份现有配置！不要在生产环境直接迁移，先在测试环境验证喵。
+| Date | Version | Changes |
+|------|---------|---------|
+| 2026-02-15 | 0.5.0 | Initial version |
+| 2026-02-15 | 0.5.1 | Added Docker migration instructions |
+
+---
+
+**🔒 Karin's Security Tips:**
+
+> Always back up your existing configuration during migration! Don't migrate directly in production; verify in a test environment first.
 >
-> 迁移完成后，请删除 `openclaw.json` 中的敏感信息（如 API Key）喵。
+> After migration, please remove sensitive information (like API Keys) from `openclaw.json`.
 
 ---
 
-*本文档由 Neko-Claw 团队编写 - Cat-Girl Family*
+*This document was written by the Neko-Claw team - Cat-Girl Family*
