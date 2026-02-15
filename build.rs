@@ -2,21 +2,20 @@
 //! # Build Script
 //!
 //! Generate version information at compile time using vergen with gitcl mode.
-//! This uses the system's git command line tool instead of the gix library.
+//! The gitcl feature in Cargo.toml makes git methods use command line git automatically.
 
 fn main() {
     // Tell Cargo to rerun if build.rs changes
     println!("cargo:rerun-if-changed=build.rs");
     
-    // Emit build info using vergen with gitcl (Git Command Line) mode
-    // gitcl uses the system git command instead of gix library
+    // Emit build info using vergen
+    // gitcl feature in Cargo.toml makes git_* methods use command line git
     vergen::EmitBuilder::builder()
-        .build_timestamp()
-        .rustc_semver()           // Correct API for rustc version
-        .cargo_features()
-        .git_sha(true)            // Short SHA
-        .git_commit_date()
-        .gitcl()                  // Use git command line instead of gix
+        .build_timestamp()    // VERGEN_BUILD_TIMESTAMP
+        .cargo_features()     // VERGEN_CARGO_FEATURES
+        .git_sha(true)        // VERGEN_GIT_SHA (short)
+        .git_commit_date()    // VERGEN_GIT_COMMIT_DATE
+        .rustc_semver()       // VERGEN_RUSTC_SEMVER
         .emit()
         .expect("Failed to emit vergen instructions");
 }
