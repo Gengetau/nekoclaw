@@ -12,13 +12,12 @@
 ///
 /// 实现者: 诺诺 (Nono) ⚡
 
-use crate::security::{allowlist::Allowlist, sandbox::Sandbox};
+use crate::security::{AllowlistService, SandboxService};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
-use tokio::process::Command;
-use tokio::sync::Arc;
-use tracing::{error, info, warn};
+use tracing::{warn};
 
 /// 🔒 SAFETY: Shell 工具错误类型喵
 #[derive(Debug, Error)]
@@ -110,15 +109,15 @@ impl Default for ShellRequest {
 #[derive(Debug, Clone)]
 pub struct ShellTool {
     /// Allowlist 检查器
-    allowlist: Arc<Allowlist>,
+    allowlist: Arc<AllowlistService>,
     /// 沙箱执行器
-    sandbox: Arc<Sandbox>,
+    sandbox: Arc<SandboxService>,
 }
 
 impl ShellTool {
     /// 🔒 SAFETY: 创建新的 Shell 工具喵
-    pub fn new(allowlist: Arc<Allowlist>) -> Self {
-        let sandbox = Arc::new(Sandbox::new(allowlist.clone()));
+    pub fn new(allowlist: Arc<AllowlistService>) -> Self {
+        let sandbox = Arc::new(SandboxService::new(allowlist.clone(), Default::default()));
         Self { allowlist, sandbox }
     }
 

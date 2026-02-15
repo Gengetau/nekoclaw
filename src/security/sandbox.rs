@@ -14,11 +14,12 @@
 //! 3. **资源限制**: 防止无限循环或资源耗尽喵
 //! 4. **输出捕获**: 安全地捕获命令输出喵
 
-use std::process::{Command, Stdio, Output};
+use std::process::{Command, Stdio};
 use std::time::Duration;
 use tokio::process::Command as AsyncCommand;
-use tokio::io::{AsyncBufReadExt, BufReader};
 use thiserror::Error;
+
+use super::{AllowlistService, AllowlistConfig};
 
 /// 沙箱错误类型
 #[derive(Error, Debug)]
@@ -298,7 +299,6 @@ impl Default for SandboxConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
 
     /// 测试沙箱执行喵
     #[tokio::test]

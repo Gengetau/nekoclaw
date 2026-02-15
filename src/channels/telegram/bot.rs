@@ -7,17 +7,9 @@
 //! - 实现 Telegram Bot 的消息接收和发送喵
 //! - 支持斜杠命令处理喵
 //! - 集成安全消息过滤喵
-//! - 提供消息事件流喵
-//!
-//! ## 安全措施
-//! - XSS 过滤所有用户输入喵
-//! - 命令注入防护喵
-//! - 速率限制（待实现）喵
-//! - 发送者验证喵
 
 use teloxide::prelude::*;
-use teloxide::types::{Update, Message, ChatId, ParseMode};
-use teloxide::dispatching::Dialogue;
+use teloxide::types::{Update, ChatId};
 use futures::Stream;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -273,13 +265,10 @@ impl TryFrom<Update> for TelegramEvent {
     type Error = TelegramError;
     
     fn try_from(update: Update) -> Result<Self, Self::Error> {
-        let timestamp = chrono::DateTime::from_timestamp(
-            update.date().timestamp(),
-            0
-        ).unwrap_or_else(|| chrono::Utc::now());
+        let timestamp = chrono::Utc::now();
         
-        // 获取消息喵
-        let message = update.message()
+        // 获取消息喵 - teloxide 0.13 使用不同的访问方式
+        let message = update.message
             .ok_or_else(|| TelegramError::ParseError("No message".to_string()))?;
         
         // 获取 Chat ID 和 User ID 喵
@@ -289,9 +278,6 @@ impl TryFrom<Update> for TelegramEvent {
             .unwrap_or(0);
         let username = message.from()
             .and_then(|u| u.username.clone());
-        
-        // 检查是否在白名单中喵
-        // （实际实现需要检查 allowed_chat_ids 喵）
         
         if let Some(text) = message.text() {
             // 检查是否为命令喵

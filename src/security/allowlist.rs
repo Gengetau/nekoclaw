@@ -124,10 +124,10 @@ impl AllowlistService {
     /// * `command` - 要检查的命令名称喵
     /// 
     /// ## Returns
-    /// Ok(()) = 允许喵，Err = 拒绝喵
+    /// Ok(CommandAllowlistEntry) = 允许喵，Err = 拒绝喵
     /// 
     /// 🔐 PERMISSION: 需要对执行命令进行安全检查喵
-    pub fn check_command(&self, command: &str) -> Result<&CommandAllowlistEntry, AllowlistError> {
+    pub fn check_command(&self, command: &str) -> Result<CommandAllowlistEntry, AllowlistError> {
         // 标准化命令名称（小写，移除路径喵）
         let normalized = command.to_lowercase();
         let normalized = normalized.split_whitespace().next()
@@ -136,17 +136,60 @@ impl AllowlistService {
             .unwrap_or("");
         
         if self.command_set.contains(normalized) {
-            Ok(self.command_details.get(normalized).unwrap())
+            Ok(self.command_details.get(normalized).unwrap().clone())
         } else if self.default_deny {
             Err(AllowlistError::CommandNotAllowed(command.to_string()))
         } else {
-            Ok(&CommandAllowlistEntry {
+            Ok(CommandAllowlistEntry {
                 command: command.to_string(),
                 description: "Default allowed".to_string(),
                 allow_args: false,
                 arg_pattern: None,
             })
         }
+    }
+    
+    /// 检查命令是否允许（简化接口）喵
+    /// 
+    /// ## Arguments
+    /// * `command` - 要检查的命令名称喵
+    /// 
+    /// ## Returns
+    /// true = 允许喵，false = 拒绝喵
+    pub fn is_command_allowed(&self, command: &str) -> bool {
+        self.check_command(command).is_ok()
+    }
+    
+    /// 检查路径是否允许喵
+    /// 
+    /// ## Arguments
+    /// * `path` - 要检查的路径喵
+    /// 
+    /// ## Returns
+    /// true = 允许喵，false = 拒绝喵
+    pub fn is_path_allowed(&self, path: &str) -> bool {
+        self.check_path(path).is_ok()
+    }
+    
+    /// 检查环境变量是否允许喵
+    /// 
+    /// ## Arguments
+    /// * `key` - 环境变量名喵
+    /// 
+    /// ## Returns
+    /// true = 允许喵（目前默认允许安全的环境变量）
+    pub fn is_env_var_allowed(&self, key: &str) -> bool {
+        // 安全的环境变量白名单喵
+        let safe_vars = ["HOME", "USER", "PATH", "LANG", "TZ", "TERM", "SHELL", "PWD"];
+        safe_vars.contains(&key)
+    }
+    
+    /// 获取允许的命令列表喵
+    /// 
+    /// ## Returns
+    /// 允许的命令名称列表喵
+    pub fn get_allowed_commands(&self) -> Vec<String> {
+        self.command_set.iter().cloned().collect()
     }
 
     /// 检查路径是否在白名单中喵

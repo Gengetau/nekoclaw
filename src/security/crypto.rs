@@ -17,15 +17,15 @@
 //! 2. 使用主密钥解密剩余部分喵
 //! 3. 验证 GCM 认证标签，确保数据完整性喵
 
-use aes_gcm::{Aes256Gcm, Key, Nonce, Tag};
-use aes_gcm::aead::{Aead, NewAead};
+use aes_gcm::{Aes256Gcm, Key, Nonce, KeyInit};
+use aes_gcm::aead::Aead;
 use rand::RngCore;
 use rand::rngs::OsRng;
 use base64::{engine::general_purpose::STANDARD as BASE64_STD, Engine as _};
 use thiserror::Error;
 
 /// 加密错误类型
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum CryptoError {
     /// 加密失败喵
     #[error("Encryption failed: {0}")]
@@ -47,10 +47,11 @@ pub enum CryptoError {
 /// 加密服务结构体
 /// 
 /// 🔐 SAFETY: 持有加密密钥，必须严格控制访问权限喵
+#[derive(Clone)]
 pub struct CryptoService {
     /// AES-256 加密密钥喵
     /// ⚠️ SAFETY: 核心敏感数据，仅限安全模块内部使用喵
-    key: Key<Aes256Gcm>,
+    cipher: Aes256Gcm,
 }
 
 impl CryptoService {
@@ -67,8 +68,9 @@ impl CryptoService {
         if key_bytes.len() != 32 {
             return Err(CryptoError::InvalidKeyLength);
         }
-        let key = Key::from_slice(key_bytes);
-        Ok(Self { key })
+        let key = Key::<Aes256Gcm>::from_slice(key_bytes);
+        let cipher = Aes256Gcm::new(key);
+        Ok(Self { cipher })
     }
 
     /// 加密明文喵
@@ -87,7 +89,7 @@ impl CryptoService {
         let nonce = Nonce::from_slice(&iv_bytes);
         
         // 2. 执行加密喵
-        let ciphertext = self.key.encrypt(nonce, plaintext.as_bytes())
+        let ciphertext = self.cipher.encrypt(nonce, plaintext.as_bytes())
             .map_err(|e| CryptoError::EncryptionError(e.to_string()))?;
         
         // 3. 组合 IV + Ciphertext + Tag，返回 Base64 编码喵
@@ -121,7 +123,7 @@ impl CryptoService {
         let nonce = Nonce::from_slice(iv_bytes);
         
         // 3. 执行解密喵
-        let plaintext = self.key.decrypt(nonce, ciphertext_with_tag.as_ref())
+        let plaintext = self.cipher.decrypt(nonce, ciphertext_with_tag.as_ref())
             .map_err(|e| CryptoError::DecryptionError(e.to_string()))?;
         
         // 4. 转换为字符串喵
