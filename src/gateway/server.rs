@@ -11,18 +11,18 @@
 /// 🔒 SAFETY: 所有 API 端点需要认证，拒绝未授权访问
 ///
 /// 实现者: 诺诺 (Nono) ⚡
-
+use crate::core::traits::Result as NekoResult;
 use axum::{
     extract::{Request, State},
     http::{HeaderMap, StatusCode},
     middleware::{self, Next},
-    response::{IntoResponse, Response, Json},
+    response::{IntoResponse, Json, Response},
     routing::{get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::{error, info};
 use uuid::Uuid;
@@ -133,9 +133,7 @@ pub async fn health_check() -> Json<HealthResponse> {
 
 /// 🔒 SAFETY: 状态端点喵
 /// 需要认证，返回详细状态信息
-pub async fn status(
-    State(state): State<Arc<GatewayState>>,
-) -> Json<serde_json::Value> {
+pub async fn status(State(state): State<Arc<GatewayState>>) -> Json<serde_json::Value> {
     Json(serde_json::json!({
         "status": "running",
         "config": {
@@ -205,7 +203,8 @@ pub async fn webhook(
     info!("Webhook received with body size: {}", body.len());
 
     // 提取请求类型
-    let event_type = headers.get("x-event-type")
+    let event_type = headers
+        .get("x-event-type")
         .and_then(|h| h.to_str().ok())
         .unwrap_or("unknown");
 
@@ -220,19 +219,20 @@ pub async fn webhook(
 /// 配置所有 API 端点
 fn create_router(state: Arc<GatewayState>) -> Router {
     // 公开端点（不需要认证）
-    let public_routes = Router::new()
-        .route("/health", get(health_check));
+    let public_routes = Router::new().route("/health", get(health_check));
 
     // 认证端点（需要 Bearer Token）
     let protected_routes = Router::new()
         .route("/status", get(status))
         .route("/pairing", post(pairing))
         .route("/webhook", post(webhook))
-        .layer(middleware::from_fn_with_state(state.clone(), auth_middleware));
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            auth_middleware,
+        ));
 
     // 合并路由
-    public_routes.merge(protected_routes)
-        .with_state(state)
+    public_routes.merge(protected_routes).with_state(state)
 }
 
 /// 🔒 SAFETY: Gateway 服务器结构体喵
@@ -257,7 +257,7 @@ impl GatewayServer {
 
     /// 🔒 SAFETY: 启动服务器喵
     /// 异常处理: 地址绑定失败、启动失败
-    pub async fn run(self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run(self) -> NekoResult<()> {
         // 构建完整地址
         let addr: SocketAddr = format!("{}:{}", self.config.bind_addr, self.config.port)
             .parse()
@@ -267,7 +267,8 @@ impl GatewayServer {
         let router = create_router(self.state.clone());
 
         // 创建 TCP 监听器
-        let listener = TcpListener::bind(&addr).await
+        let listener = TcpListener::bind(&addr)
+            .await
             .map_err(|e| format!("Failed to bind to {}: {}", addr, e))?;
 
         info!("Gateway server listening on http://{}", addr);

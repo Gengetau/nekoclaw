@@ -11,8 +11,7 @@
 ///
 /// 测试者: 诺诺 (Nono) ⚡
 /// 最后更新: 2026-02-15
-
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::time::Duration;
 use tokio::runtime::Runtime;
 
@@ -67,7 +66,9 @@ fn benchmark_json_parsing(c: &mut Criterion) {
 
     c.bench_function("json_parse_message", |b| {
         b.iter(|| {
-            black_box(serde_json::from_str::<serde_json::Value>(black_box(test_message)))
+            black_box(serde_json::from_str::<serde_json::Value>(black_box(
+                test_message,
+            )))
         })
     });
 }

@@ -1,3 +1,4 @@
+pub mod anthropic;
 /// Provider 适配器模块导出 🤖
 ///
 /// @诺诺 的 Provider 模块统一入口喵
@@ -10,20 +11,18 @@
 /// 🔒 SAFETY: 模块级访问控制，防止非法访问
 ///
 /// 模块作者: 诺诺 (Nono) ⚡
-
 pub mod openai;
-pub mod anthropic;
 pub mod openrouter;
 
 // 🔒 SAFETY: 重新导出公共接口喵
-pub use openai::{
-    OpenAIConfig, OpenAIClient, ChatRequest, ChatResponse, Message, Choice, Usage, OpenAIError
-};
 pub use anthropic::{
-    AnthropicConfig, AnthropicClient, ClaudeRequest, ClaudeResponse, ContentBlock
+    AnthropicClient, AnthropicConfig, ClaudeRequest, ClaudeResponse, ContentBlock,
+};
+pub use openai::{
+    ChatRequest, ChatResponse, Choice, Message, OpenAIClient, OpenAIConfig, OpenAIError, Usage,
 };
 pub use openrouter::{
-    OpenRouterConfig, OpenRouterClient, OpenRouterRequest, ProviderPreference, ModelInfo, Pricing
+    ModelInfo, OpenRouterClient, OpenRouterConfig, OpenRouterRequest, Pricing, ProviderPreference,
 };
 
 // 🔒 SAFETY: 统一错误类型喵
@@ -136,12 +135,17 @@ impl ProviderFactory {
         self.openrouter_config
             .as_ref()
             .map(|config| OpenRouterClient::new(config.clone()))
-            .ok_or_else(|| ProviderError::ApiError("OpenRouter configuration not found".to_string()))
+            .ok_or_else(|| {
+                ProviderError::ApiError("OpenRouter configuration not found".to_string())
+            })
     }
 
     /// 🔒 SAFETY: 根据 Provider 类型创建客户端喵
     /// 异常处理: 配置不存在或类型不支持时返回错误
-    pub fn create_client(&self, provider_type: ProviderType) -> Result<ProviderClient, ProviderError> {
+    pub fn create_client(
+        &self,
+        provider_type: ProviderType,
+    ) -> Result<ProviderClient, ProviderError> {
         match provider_type {
             ProviderType::OpenAI => {
                 let client = self.create_openai_client()?;
@@ -207,8 +211,14 @@ mod tests {
     fn test_provider_type_parsing() {
         assert_eq!(ProviderType::from_str("openai"), Some(ProviderType::OpenAI));
         assert_eq!(ProviderType::from_str("OPENAI"), Some(ProviderType::OpenAI));
-        assert_eq!(ProviderType::from_str("anthropic"), Some(ProviderType::Anthropic));
-        assert_eq!(ProviderType::from_str("openrouter"), Some(ProviderType::OpenRouter));
+        assert_eq!(
+            ProviderType::from_str("anthropic"),
+            Some(ProviderType::Anthropic)
+        );
+        assert_eq!(
+            ProviderType::from_str("openrouter"),
+            Some(ProviderType::OpenRouter)
+        );
         assert_eq!(ProviderType::from_str("unknown"), None);
     }
 

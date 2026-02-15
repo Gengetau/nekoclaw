@@ -1,3 +1,4 @@
+use super::openai::{ChatRequest, ChatResponse, Message, ProviderError};
 /// OpenRouter Provider 实现模块 🌐
 ///
 /// @诺诺 的 OpenRouter 聚合客户端实现喵
@@ -10,12 +11,10 @@
 /// 🔒 SAFETY: API Key 加密存储，请求参数严格验证
 ///
 /// 实现者: 诺诺 (Nono) ⚡
-
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use super::openai::{ChatRequest, ChatResponse, Message, ProviderError};
 
 /// 🔒 SAFETY: OpenRouter 配置结构体喵
 #[derive(Debug, Clone)]
@@ -144,7 +143,8 @@ impl OpenRouterClient {
     pub async fn list_models(&self) -> Result<Vec<ModelInfo>, ProviderError> {
         let url = format!("{}/models", self.config.base_url);
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .bearer_auth(&self.config.api_key)
             .header("HTTP-Referer", "https://github.com/Gengetau/nekoclaw")
@@ -158,12 +158,18 @@ impl OpenRouterClient {
             response.json().await.map_err(ProviderError::from)
         } else {
             let error_text = response.text().await.unwrap_or_default();
-            Err(ProviderError::ApiError(format!("HTTP {}: {}", status, error_text)))
+            Err(ProviderError::ApiError(format!(
+                "HTTP {}: {}",
+                status, error_text
+            )))
         }
     }
 
     /// 🔒 SAFETY: 发送聊天请求（带重试和模型回退）喵
-    async fn send_request_with_retry(&self, request: &OpenRouterRequest) -> Result<ChatResponse, ProviderError> {
+    async fn send_request_with_retry(
+        &self,
+        request: &OpenRouterRequest,
+    ) -> Result<ChatResponse, ProviderError> {
         let mut current_request = request.clone();
         let mut last_error = None;
 
@@ -186,7 +192,8 @@ impl OpenRouterClient {
                                 if let Some(model) = current_request.base.model.as_ref() {
                                     if model != &self.config.fallback_model {
                                         // 回退到兜底模型
-                                        current_request.base.model = Some(self.config.fallback_model.clone());
+                                        current_request.base.model =
+                                            Some(self.config.fallback_model.clone());
                                         continue;
                                     }
                                 }
@@ -194,7 +201,10 @@ impl OpenRouterClient {
                         }
 
                         // 指数退避
-                        tokio::time::sleep(Duration::from_millis(100 * (2_u64.pow(attempt as u32)))).await;
+                        tokio::time::sleep(Duration::from_millis(
+                            100 * (2_u64.pow(attempt as u32)),
+                        ))
+                        .await;
                     }
                 }
             }
@@ -205,10 +215,14 @@ impl OpenRouterClient {
 
     /// 🔒 SAFETY: 发送聊天请求（核心实现）喵
     /// 异常处理: 网络错误、认证错误、模型不可用错误
-    async fn send_request(&self, request: &OpenRouterRequest) -> Result<ChatResponse, ProviderError> {
+    async fn send_request(
+        &self,
+        request: &OpenRouterRequest,
+    ) -> Result<ChatResponse, ProviderError> {
         let url = format!("{}/chat/completions", self.config.base_url);
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .bearer_auth(&self.config.api_key)
             .header("Content-Type", "application/json")
@@ -232,7 +246,10 @@ impl OpenRouterClient {
             if let Ok(openrouter_error) = serde_json::from_str::<OpenRouterError>(&error_text) {
                 Err(ProviderError::ApiError(openrouter_error.error.message))
             } else {
-                Err(ProviderError::ApiError(format!("HTTP {}: {}", status, error_text)))
+                Err(ProviderError::ApiError(format!(
+                    "HTTP {}: {}",
+                    status, error_text
+                )))
             }
         }
     }
@@ -241,13 +258,19 @@ impl OpenRouterClient {
 /// 🔒 SAFETY: OpenRouter 客户端公开接口喵
 impl OpenRouterClient {
     /// 🔒 SAFETY: 聊天接口（OpenRouter 扩展版）喵
-    pub async fn chat_api(&self, request: &OpenRouterRequest) -> Result<ChatResponse, ProviderError> {
+    pub async fn chat_api(
+        &self,
+        request: &OpenRouterRequest,
+    ) -> Result<ChatResponse, ProviderError> {
         self.send_request_with_retry(request).await
     }
 
     /// 🔒 SAFETY: 兼容 OpenAI 接口喵
     /// 允许无缝切换提供商
-    pub async fn chat_openai_compatible(&self, request: &ChatRequest) -> Result<ChatResponse, ProviderError> {
+    pub async fn chat_openai_compatible(
+        &self,
+        request: &ChatRequest,
+    ) -> Result<ChatResponse, ProviderError> {
         let openrouter_request = OpenRouterRequest {
             base: request.clone(),
             provider: None,
@@ -274,7 +297,9 @@ impl OpenRouterClient {
         };
 
         let response = self.chat_api(&request).await?;
-        Ok(response.choices.get(0)
+        Ok(response
+            .choices
+            .get(0)
             .ok_or_else(|| ProviderError::ApiError("No choices in response".to_string()))?
             .message
             .content
@@ -306,7 +331,9 @@ impl OpenRouterClient {
         };
 
         let response = self.chat_api(&request).await?;
-        Ok(response.choices.get(0)
+        Ok(response
+            .choices
+            .get(0)
             .ok_or_else(|| ProviderError::ApiError("No choices in response".to_string()))?
             .message
             .content
@@ -325,7 +352,9 @@ impl OpenRouterClient {
                 // 解析价格并比较
                 let a_price: f64 = a.pricing.prompt.parse().unwrap_or(f64::MAX);
                 let b_price: f64 = b.pricing.prompt.parse().unwrap_or(f64::MAX);
-                a_price.partial_cmp(&b_price).unwrap_or(std::cmp::Ordering::Equal)
+                a_price
+                    .partial_cmp(&b_price)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
             .filter(|m| {
                 // 检查价格是否在预算内

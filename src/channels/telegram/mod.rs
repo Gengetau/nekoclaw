@@ -23,5 +23,5 @@
 pub mod bot;
 pub mod commands;
 
-pub use bot::{TelegramBot, TelegramConfig, TelegramEvent, TelegramError};
-pub use commands::{CommandService, CommandConfig, CommandResponse, Role};
+pub use bot::{TelegramBot, TelegramConfig, TelegramError, TelegramEvent};
+pub use commands::{CommandConfig, CommandResponse, CommandService, Role};

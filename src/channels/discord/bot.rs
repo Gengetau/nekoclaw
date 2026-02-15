@@ -12,9 +12,9 @@
 
 use crate::core::traits::*;
 use async_trait::async_trait;
+use futures::{Stream, StreamExt};
 use std::pin::Pin;
 use std::sync::Arc;
-use futures::{Stream, StreamExt};
 use tokio::sync::mpsc;
 
 /// Discord Bot 配置
@@ -86,12 +86,18 @@ impl DiscordBot {
     }
 
     /// 处理接收到的消息
-    async fn handle_message(&self, author_id: String, channel_id: String, content: String) -> Result<ChannelEvent> {
+    async fn handle_message(
+        &self,
+        author_id: String,
+        channel_id: String,
+        content: String,
+    ) -> Result<ChannelEvent> {
         // 检查用户授权
         if !self.config.allowed_users.contains(&author_id) {
             println!("⚠️  Unauthorized user: {}", author_id);
             // 发送错误响应
-            self.send_message(&channel_id, "🚫 Unauthorized access").await?;
+            self.send_message(&channel_id, "🚫 Unauthorized access")
+                .await?;
             return Err("Unauthorized user".into());
         }
 
@@ -107,7 +113,8 @@ impl DiscordBot {
         };
 
         // 发送到事件队列
-        self.event_tx.send(DiscordEvent::Message(event.clone()))
+        self.event_tx
+            .send(DiscordEvent::Message(event.clone()))
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         Ok(event)
@@ -124,7 +131,10 @@ impl DiscordBot {
                     println!("⌨️  User {} is typing in channel {}", user_id, channel_id);
                 }
                 DiscordEvent::Reaction(user_id, channel_id, emoji) => {
-                    println!("😀 User {} reacted with {} in channel {}", user_id, emoji, channel_id);
+                    println!(
+                        "😀 User {} reacted with {} in channel {}",
+                        user_id, emoji, channel_id
+                    );
                 }
             }
         }
@@ -147,11 +157,12 @@ impl Channel for DiscordBot {
             sender_id: "system".to_string(),
             message: "Mock event".to_string(),
             metadata: None,
-        }).ok();
+        })
+        .ok();
 
-        let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
-            .map(|event| Ok(event));
-            
+        let stream =
+            tokio_stream::wrappers::UnboundedReceiverStream::new(rx).map(|event| Ok(event));
+
         Box::pin(stream)
     }
 
@@ -168,6 +179,6 @@ impl Channel for DiscordBot {
 #[derive(Debug, Clone)]
 pub enum DiscordEvent {
     Message(ChannelEvent),
-    Typing(String, String),  // user_id, channel_id
-    Reaction(String, String, String),  // user_id, channel_id, emoji
+    Typing(String, String),           // user_id, channel_id
+    Reaction(String, String, String), // user_id, channel_id, emoji
 }

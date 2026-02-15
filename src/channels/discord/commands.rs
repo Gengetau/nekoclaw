@@ -29,7 +29,7 @@ pub struct CommandContext {
 pub struct CommandResult {
     pub success: bool,
     pub message: String,
-    pub ephemeral: bool,  // 仅用户可见
+    pub ephemeral: bool, // 仅用户可见
 }
 
 /// 命令处理器 Trait
@@ -78,7 +78,8 @@ impl CommandManager {
         ctx: CommandContext,
         args: Option<String>,
     ) -> Result<CommandResult> {
-        let handler = self.commands
+        let handler = self
+            .commands
             .get(command_name)
             .ok_or_else(|| format!("Command '{}' not found", command_name))?;
 
@@ -130,7 +131,8 @@ impl CommandHandler for HelpCommand {
                       `/help` - Show this help message\n\
                       `/status` - Show system status\n\
                       `/memory` - Query memory\n\
-                      `/config` - Show configuration".to_string(),
+                      `/config` - Show configuration"
+                .to_string(),
             ephemeral: false,
         })
     }
@@ -157,7 +159,7 @@ impl CommandHandler for StatusCommand {
                  ✅ Neko-Claw v0.1.0\n\
                  ✅ Memory: {} items\n\
                  ✅ Provider: OpenAI",
-                0  // TODO: 获取实际数据
+                0 // TODO: 获取实际数据
             ),
             ephemeral: false,
         })
@@ -215,8 +217,9 @@ impl CommandHandler for ConfigCommand {
         Ok(CommandResult {
             success: true,
             message: "⚙️  **Current Configuration:**\n\
-                      TODO: Load and display config".to_string(),
-            ephemeral: true,  // 敏感信息，仅用户可见
+                      TODO: Load and display config"
+                .to_string(),
+            ephemeral: true, // 敏感信息，仅用户可见
         })
     }
 }
@@ -224,12 +227,12 @@ impl CommandHandler for ConfigCommand {
 /// 创建默认命令管理器
 pub fn create_default_commands() -> CommandManager {
     let mut manager = CommandManager::new();
-    
+
     manager.register(Box::new(HelpCommand));
     manager.register(Box::new(StatusCommand));
     manager.register(Box::new(MemoryCommand));
     manager.register(Box::new(ConfigCommand));
-    
+
     manager
 }
 

@@ -10,7 +10,6 @@
 /// 🔒 SAFETY: API Key 加密存储，请求参数严格验证
 ///
 /// 实现者: 诺诺 (Nono) ⚡
-
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -77,17 +76,26 @@ impl Message {
     /// 🔒 SAFETY: 创建用户消息喵
     /// 内容参数必须经过 XSS 过滤
     pub fn user(content: String) -> Self {
-        Self { role: "user".to_string(), content }
+        Self {
+            role: "user".to_string(),
+            content,
+        }
     }
 
     /// 🔒 SAFETY: 创建助手消息喵
     pub fn assistant(content: String) -> Self {
-        Self { role: "assistant".to_string(), content }
+        Self {
+            role: "assistant".to_string(),
+            content,
+        }
     }
 
     /// 🔒 SAFETY: 创建系统消息喵
     pub fn system(content: String) -> Self {
-        Self { role: "system".to_string(), content }
+        Self {
+            role: "system".to_string(),
+            content,
+        }
     }
 }
 
@@ -194,7 +202,10 @@ impl OpenAIClient {
 
     /// 🔒 SAFETY: 发送聊天请求（带重试）喵
     /// 自动处理网络波动和临时错误
-    async fn send_request_with_retry(&self, request: &ChatRequest) -> Result<ChatResponse, ProviderError> {
+    async fn send_request_with_retry(
+        &self,
+        request: &ChatRequest,
+    ) -> Result<ChatResponse, ProviderError> {
         let mut last_error = None;
 
         for attempt in 0..=self.config.max_retries {
@@ -208,7 +219,10 @@ impl OpenAIClient {
                     }
                     // 最后一次不等待
                     if attempt < self.config.max_retries {
-                        tokio::time::sleep(Duration::from_millis(100 * (2_u64.pow(attempt as u32)))).await;
+                        tokio::time::sleep(Duration::from_millis(
+                            100 * (2_u64.pow(attempt as u32)),
+                        ))
+                        .await;
                     }
                 }
             }
@@ -222,7 +236,8 @@ impl OpenAIClient {
     async fn send_request(&self, request: &ChatRequest) -> Result<ChatResponse, ProviderError> {
         let url = format!("{}/chat/completions", self.config.base_url);
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .bearer_auth(&self.config.api_key)
             .header("Content-Type", "application/json")
@@ -244,7 +259,10 @@ impl OpenAIClient {
             if let Ok(openai_error) = serde_json::from_str::<OpenAIError>(&error_text) {
                 Err(ProviderError::ApiError(openai_error.error.message))
             } else {
-                Err(ProviderError::ApiError(format!("HTTP {}: {}", status, error_text)))
+                Err(ProviderError::ApiError(format!(
+                    "HTTP {}: {}",
+                    status, error_text
+                )))
             }
         }
     }
@@ -271,7 +289,9 @@ impl OpenAIClient {
         };
 
         let response = self.chat_api(&request).await?;
-        Ok(response.choices.get(0)
+        Ok(response
+            .choices
+            .get(0)
             .ok_or_else(|| ProviderError::ApiError("No choices in response".to_string()))?
             .message
             .content

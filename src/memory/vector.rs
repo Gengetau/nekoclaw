@@ -55,7 +55,8 @@ impl SimpleVectorDB {
 
     /// KNN 搜索 (K-Nearest Neighbors)
     pub fn knn_search(&self, query: &[f32], k: usize) -> Vec<(String, f32)> {
-        let mut results: Vec<(String, f32)> = self.vectors
+        let mut results: Vec<(String, f32)> = self
+            .vectors
             .iter()
             .map(|(id, vec)| {
                 let similarity = Self::cosine_similarity_vec(query, vec);
@@ -76,10 +77,7 @@ impl SimpleVectorDB {
             return 0.0;
         }
 
-        let dot: f32 = vec_a.iter()
-            .zip(vec_b.iter())
-            .map(|(a, b)| a * b)
-            .sum();
+        let dot: f32 = vec_a.iter().zip(vec_b.iter()).map(|(a, b)| a * b).sum();
 
         let norm_a: f32 = vec_a.iter().map(|x| x * x).sum::<f32>().sqrt();
         let norm_b: f32 = vec_b.iter().map(|x| x * x).sum::<f32>().sqrt();

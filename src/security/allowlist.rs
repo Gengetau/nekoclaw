@@ -1,20 +1,20 @@
 //! # 白名单检查模块
-//! 
+//!
 //! ⚠️ SAFETY: 访问控制核心模块，用于限制可执行的命令和访问的路径喵
-//! 
+//!
 //! ## 功能说明
 //! - 管理可执行命令的白名单喵
 //! - 管理可访问路径的白名单喵
 //! - 提供快速的 O(1) 查找性能喵
-//! 
+//!
 //! ## 使用场景
 //! - Shell 命令执行前检查喵
 //! - 文件系统访问控制喵
 //! - API 端点权限验证喵
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// 白名单错误类型
@@ -23,11 +23,11 @@ pub enum AllowlistError {
     /// 命令不在白名单中喵
     #[error("Command not in whitelist: {0}")]
     CommandNotAllowed(String),
-    
+
     /// 路径不在白名单中喵
     #[error("Path not in whitelist: {0}")]
     PathNotAllowed(String),
-    
+
     /// 路径遍历攻击尝试喵
     #[error("Path traversal attack detected: {0}")]
     PathTraversalAttempt(String),
@@ -69,7 +69,7 @@ pub struct AllowlistConfig {
 }
 
 /// 白名单服务喵
-/// 
+///
 /// 🔐 SAFETY: 核心访问控制模块，必须严格审计喵
 #[derive(Clone, Debug)]
 pub struct AllowlistService {
@@ -88,28 +88,28 @@ use std::collections::HashMap;
 
 impl AllowlistService {
     /// 创建白名单服务喵
-    /// 
+    ///
     /// ## Arguments
     /// * `config` - 白名单配置喵
-    /// 
+    ///
     /// ## Returns
     /// 初始化后的白名单服务喵
-    /// 
+    ///
     /// 🔐 PERMISSION: 仅允许安全模块初始化喵
     pub fn new(config: AllowlistConfig) -> Self {
         let mut command_set = HashSet::new();
         let mut command_details = HashMap::new();
-        
+
         for entry in config.commands {
             command_set.insert(entry.command.clone());
             command_details.insert(entry.command.clone(), entry);
         }
-        
+
         let mut path_set = HashSet::new();
         for entry in config.paths {
             path_set.insert(entry.pattern);
         }
-        
+
         Self {
             command_set,
             command_details,
@@ -119,22 +119,25 @@ impl AllowlistService {
     }
 
     /// 检查命令是否在白名单中喵
-    /// 
+    ///
     /// ## Arguments
     /// * `command` - 要检查的命令名称喵
-    /// 
+    ///
     /// ## Returns
     /// Ok(CommandAllowlistEntry) = 允许喵，Err = 拒绝喵
-    /// 
+    ///
     /// 🔐 PERMISSION: 需要对执行命令进行安全检查喵
     pub fn check_command(&self, command: &str) -> Result<CommandAllowlistEntry, AllowlistError> {
         // 标准化命令名称（小写，移除路径喵）
         let normalized = command.to_lowercase();
-        let normalized = normalized.split_whitespace().next()
+        let normalized = normalized
+            .split_whitespace()
+            .next()
             .unwrap_or("")
-            .split('/').last()
+            .split('/')
+            .last()
             .unwrap_or("");
-        
+
         if self.command_set.contains(normalized) {
             Ok(self.command_details.get(normalized).unwrap().clone())
         } else if self.default_deny {
@@ -148,34 +151,34 @@ impl AllowlistService {
             })
         }
     }
-    
+
     /// 检查命令是否允许（简化接口）喵
-    /// 
+    ///
     /// ## Arguments
     /// * `command` - 要检查的命令名称喵
-    /// 
+    ///
     /// ## Returns
     /// true = 允许喵，false = 拒绝喵
     pub fn is_command_allowed(&self, command: &str) -> bool {
         self.check_command(command).is_ok()
     }
-    
+
     /// 检查路径是否允许喵
-    /// 
+    ///
     /// ## Arguments
     /// * `path` - 要检查的路径喵
-    /// 
+    ///
     /// ## Returns
     /// true = 允许喵，false = 拒绝喵
     pub fn is_path_allowed(&self, path: &str) -> bool {
         self.check_path(path).is_ok()
     }
-    
+
     /// 检查环境变量是否允许喵
-    /// 
+    ///
     /// ## Arguments
     /// * `key` - 环境变量名喵
-    /// 
+    ///
     /// ## Returns
     /// true = 允许喵（目前默认允许安全的环境变量）
     pub fn is_env_var_allowed(&self, key: &str) -> bool {
@@ -183,9 +186,9 @@ impl AllowlistService {
         let safe_vars = ["HOME", "USER", "PATH", "LANG", "TZ", "TERM", "SHELL", "PWD"];
         safe_vars.contains(&key)
     }
-    
+
     /// 获取允许的命令列表喵
-    /// 
+    ///
     /// ## Returns
     /// 允许的命令名称列表喵
     pub fn get_allowed_commands(&self) -> Vec<String> {
@@ -193,34 +196,38 @@ impl AllowlistService {
     }
 
     /// 检查路径是否在白名单中喵
-    /// 
+    ///
     /// ## Arguments
     /// * `path` - 要检查的路径喵
-    /// 
+    ///
     /// ## Returns
     /// Ok(()) = 允许喵，Err = 拒绝喵
-    /// 
+    ///
     /// ⚠️ SAFETY: 必须检测路径遍历攻击喵
     /// 🔐 PERMISSION: 需要对文件系统访问进行安全检查喵
     pub fn check_path(&self, path: &str) -> Result<(), AllowlistError> {
         // 1. 检测路径遍历攻击喵
-        if path.contains("..") || path.starts_with("/etc") || 
-           path.starts_with("/root") || path.contains(".ssh") ||
-           path.contains(".aws") || path.contains("password") {
+        if path.contains("..")
+            || path.starts_with("/etc")
+            || path.starts_with("/root")
+            || path.contains(".ssh")
+            || path.contains(".aws")
+            || path.contains("password")
+        {
             return Err(AllowlistError::PathTraversalAttempt(path.to_string()));
         }
-        
+
         // 2. 标准化路径喵
         let normalized = PathBuf::from(path);
         let normalized_str = normalized.to_string_lossy().to_lowercase();
-        
+
         // 3. 检查白名单喵
         for allowed_pattern in &self.path_set {
             if self.path_matches(&normalized_str, allowed_pattern) {
                 return Ok(());
             }
         }
-        
+
         if self.default_deny {
             Err(AllowlistError::PathNotAllowed(path.to_string()))
         } else {
@@ -234,7 +241,7 @@ impl AllowlistService {
         if path == pattern {
             return true;
         }
-        
+
         // 前缀匹配喵（支持递归访问喵）
         if pattern.ends_with("/**") {
             let prefix = &pattern[..pattern.len() - 3];
@@ -242,7 +249,7 @@ impl AllowlistService {
                 return true;
             }
         }
-        
+
         // 后缀匹配喵
         if pattern.starts_with("**") {
             let suffix = &pattern[2..];
@@ -250,7 +257,7 @@ impl AllowlistService {
                 return true;
             }
         }
-        
+
         false
     }
 }
@@ -352,12 +359,12 @@ mod tests {
     fn test_command_whitelist() {
         let config = AllowlistConfig::default();
         let service = AllowlistService::new(config);
-        
+
         // 测试允许的命令喵
         assert!(service.check_command("git").is_ok());
         assert!(service.check_command("ls").is_ok());
         assert!(service.check_command("cat").is_ok());
-        
+
         // 测试拒绝的命令喵
         assert!(service.check_command("rm").is_err());
         assert!(service.check_command("chmod").is_err());
@@ -369,16 +376,20 @@ mod tests {
     fn test_path_whitelist() {
         let config = AllowlistConfig::default();
         let service = AllowlistService::new(config);
-        
+
         // 测试允许的路径喵
-        assert!(service.check_path("/home/ubuntu/.openclaw/workspace").is_ok());
+        assert!(service
+            .check_path("/home/ubuntu/.openclaw/workspace")
+            .is_ok());
         assert!(service.check_path("/tmp/test.txt").is_ok());
-        
+
         // 测试拒绝的路径喵
         assert!(service.check_path("/etc/passwd").is_err());
         assert!(service.check_path("/root/.ssh/id_rsa").is_err());
-        
+
         // 测试路径遍历攻击喵
-        assert!(service.check_path("/home/ubuntu/.openclaw/../../../etc/passwd").is_err());
+        assert!(service
+            .check_path("/home/ubuntu/.openclaw/../../../etc/passwd")
+            .is_err());
     }
 }

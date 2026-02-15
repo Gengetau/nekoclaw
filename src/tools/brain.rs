@@ -11,14 +11,13 @@
 /// 🔒 SAFETY: 只有持有有效 token 的 Agent 才能通信
 ///
 /// 实现者: 诺诺 (Nono) ⚡
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use thiserror::Error;
 use tokio::sync::{mpsc, RwLock};
 use tracing::{info, warn};
 use uuid::Uuid;
-use thiserror::Error;
 
 /// 🔒 SAFETY: 消息类型枚举喵
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -58,12 +57,7 @@ pub struct AgentMessage {
 
 impl AgentMessage {
     /// 🔒 SAFETY: 创建新消息喵
-    pub fn new(
-        from_agent: String,
-        to_agent: String,
-        kind: MessageKind,
-        content: String,
-    ) -> Self {
+    pub fn new(from_agent: String, to_agent: String, kind: MessageKind, content: String) -> Self {
         Self {
             message_id: Uuid::new_v4().to_string(),
             from_agent,
@@ -205,8 +199,12 @@ impl BrainTool {
         // 创建消息通道
         let (tx, _rx) = mpsc::unbounded_channel();
 
-        state.agents.insert(agent_info.agent_id.clone(), agent_info.clone());
-        state.message_channels.insert(agent_info.agent_id.clone(), tx);
+        state
+            .agents
+            .insert(agent_info.agent_id.clone(), agent_info.clone());
+        state
+            .message_channels
+            .insert(agent_info.agent_id.clone(), tx);
 
         info!("Agent registered: {}", agent_info.agent_id);
 
@@ -301,11 +299,7 @@ mod tests {
 
     #[test]
     fn test_agent_message_creation() {
-        let msg = AgentMessage::normal(
-            "main".to_string(),
-            "sub".to_string(),
-            "Hello".to_string(),
-        );
+        let msg = AgentMessage::normal("main".to_string(), "sub".to_string(), "Hello".to_string());
 
         assert_eq!(msg.kind, MessageKind::Normal);
         assert_eq!(msg.from_agent, "main");

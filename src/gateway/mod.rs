@@ -1,3 +1,4 @@
+pub mod pairing;
 /// Gateway 模块导出 🌐
 ///
 /// @诺诺 的 Gateway 模块统一入口喵
@@ -10,15 +11,15 @@
 /// 🔒 SAFETY: 模块级访问控制，防止非法访问
 ///
 /// 模块作者: 诺诺 (Nono) ⚡
-
 pub mod server;
-pub mod pairing;
 pub mod webhook;
 
 // 🔒 SAFETY: 重新导出公共接口喵
-pub use server::{GatewayConfig, GatewayServer, GatewayState, HealthResponse, ErrorResponse};
 pub use pairing::{PairingConfig, PairingManager, PairingRequest, PairingResponse, PairingStatus};
-pub use webhook::{WebhookConfig, WebhookManager, WebhookEvent, WebhookResponse, WebhookEventType, WebhookHandler};
+pub use server::{ErrorResponse, GatewayConfig, GatewayServer, GatewayState, HealthResponse};
+pub use webhook::{
+    WebhookConfig, WebhookEvent, WebhookEventType, WebhookHandler, WebhookManager, WebhookResponse,
+};
 
 /// 🔒 SAFETY: Gateway 统一入口结构体喵
 /// 封装所有 Gateway 功能
@@ -47,7 +48,7 @@ impl Gateway {
 
     /// 🔒 SAFETY: 启动 Gateway 服务器喵
     /// 异常处理: 启动失败时返回错误
-    pub async fn run(self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run(self) -> crate::core::traits::Result<()> {
         if let Some(server) = self.server {
             server.run().await?;
         }

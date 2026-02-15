@@ -1,3 +1,4 @@
+use super::openai::{Message, ProviderError};
 /// Anthropic Provider 实现模块 🧠
 ///
 /// @诺诺 的 Anthropic API 客户端实现喵
@@ -10,12 +11,10 @@
 /// 🔒 SAFETY: API Key 加密存储，请求参数严格验证
 ///
 /// 实现者: 诺诺 (Nono) ⚡
-
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use super::openai::{Message, ProviderError};
 
 /// 🔒 SAFETY: Anthropic 配置结构体喵
 #[derive(Debug, Clone)]
@@ -152,7 +151,10 @@ impl AnthropicClient {
     }
 
     /// 🔒 SAFETY: 发送聊天请求（带重试）喵
-    async fn send_request_with_retry(&self, request: &ClaudeRequest) -> Result<ClaudeResponse, ProviderError> {
+    async fn send_request_with_retry(
+        &self,
+        request: &ClaudeRequest,
+    ) -> Result<ClaudeResponse, ProviderError> {
         let mut last_error = None;
 
         for attempt in 0..=self.config.max_retries {
@@ -167,7 +169,10 @@ impl AnthropicClient {
                     // 最后一次不等待
                     if attempt < self.config.max_retries {
                         // 指数退避
-                        tokio::time::sleep(Duration::from_millis(100 * (2_u64.pow(attempt as u32)))).await;
+                        tokio::time::sleep(Duration::from_millis(
+                            100 * (2_u64.pow(attempt as u32)),
+                        ))
+                        .await;
                     }
                 }
             }
@@ -181,7 +186,8 @@ impl AnthropicClient {
     async fn send_request(&self, request: &ClaudeRequest) -> Result<ClaudeResponse, ProviderError> {
         let url = format!("{}/messages", self.config.base_url);
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("x-api-key", &self.config.api_key)
             .header("anthropic-version", &self.version)
@@ -206,7 +212,10 @@ impl AnthropicClient {
             if let Ok(anthropic_error) = serde_json::from_str::<AnthropicError>(&error_text) {
                 Err(ProviderError::ApiError(anthropic_error.error.message))
             } else {
-                Err(ProviderError::ApiError(format!("HTTP {}: {}", status, error_text)))
+                Err(ProviderError::ApiError(format!(
+                    "HTTP {}: {}",
+                    status, error_text
+                )))
             }
         }
     }
@@ -235,14 +244,20 @@ impl AnthropicClient {
         let response = self.chat_api(&request).await?;
 
         // 提取文本内容
-        response.content.get(0)
+        response
+            .content
+            .get(0)
             .and_then(|block| block.text.as_ref())
             .ok_or_else(|| ProviderError::ApiError("No text content in response".to_string()))
             .map(|s| s.clone())
     }
 
     /// 🔒 SAFETY: 带系统提示的聊天喵
-    pub async fn chat_with_system(&self, system: &str, prompt: &str) -> Result<String, ProviderError> {
+    pub async fn chat_with_system(
+        &self,
+        system: &str,
+        prompt: &str,
+    ) -> Result<String, ProviderError> {
         let request = ClaudeRequest {
             model: "claude-3-opus-20240229".to_string(),
             messages: vec![Message::user(prompt.to_string())],
@@ -253,7 +268,9 @@ impl AnthropicClient {
         };
 
         let response = self.chat_api(&request).await?;
-        response.content.get(0)
+        response
+            .content
+            .get(0)
             .and_then(|block| block.text.as_ref())
             .ok_or_else(|| ProviderError::ApiError("No text content in response".to_string()))
             .map(|s| s.clone())

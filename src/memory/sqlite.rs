@@ -12,10 +12,10 @@
  */
 
 use crate::core::traits::*;
-use rusqlite::{Connection, Result as SqliteResult, params};
+use chrono::{DateTime, Utc};
+use rusqlite::{params, Connection, Result as SqliteResult};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use chrono::{DateTime, Utc};
 
 pub struct SqliteMemory {
     conn: Arc<Mutex<Connection>>,
@@ -112,10 +112,7 @@ impl SqliteMemory {
             return 0.0;
         }
 
-        let dot: f32 = vec_a.iter()
-            .zip(vec_b.iter())
-            .map(|(a, b)| a * b)
-            .sum();
+        let dot: f32 = vec_a.iter().zip(vec_b.iter()).map(|(a, b)| a * b).sum();
 
         let norm_a: f32 = vec_a.iter().map(|x| x * x).sum::<f32>().sqrt();
         let norm_b: f32 = vec_b.iter().map(|x| x * x).sum::<f32>().sqrt();
@@ -163,12 +160,11 @@ impl Memory for SqliteMemory {
         let conn = self.conn.lock().map_err(|e| format!("Lock error: {}", e))?;
 
         // 1. 关键词搜索 (FTS5)
-        let keyword_results: Vec<String> = conn.prepare(
-            "SELECT id FROM memory_fts WHERE memory_fts MATCH ? ORDER BY rank LIMIT ?"
-        )?
-        .query_map(params![query, top_k], |row| row.get(0))?
-        .collect::<SqliteResult<Vec<_>>>()
-        .map_err(|e| format!("FTS5 search error: {}", e))?;
+        let keyword_results: Vec<String> = conn
+            .prepare("SELECT id FROM memory_fts WHERE memory_fts MATCH ? ORDER BY rank LIMIT ?")?
+            .query_map(params![query, top_k], |row| row.get(0))?
+            .collect::<SqliteResult<Vec<_>>>()
+            .map_err(|e| format!("FTS5 search error: {}", e))?;
 
         // 2. 向量搜索 (如果启用)
         let mut result_ids = if self.enable_vector && !keyword_results.is_empty() {
@@ -185,20 +181,25 @@ impl Memory for SqliteMemory {
         // 4. 获取完整记忆项
         let mut items = Vec::new();
         for id in result_ids.iter().take(top_k) {
-            let item = conn.prepare_cached(
-                "SELECT id, content, embedding, metadata, created_at FROM memory WHERE id = ?"
-            )?
-            .query_row(params![id], |row| {
-                Ok(MemoryItem {
-                    id: row.get(0)?,
-                    content: row.get(1)?,
-                    embedding: row.get::<_, Option<Vec<u8>>>(2)?.and_then(|b| Self::parse_embedding(&b)),
-                    metadata: row.get::<_, Option<String>>(3)?.and_then(|s| serde_json::from_str(&s).ok()),
-                    created_at: DateTime::parse_from_rfc3339(row.get::<_, String>(4)?.as_str())
-                        .unwrap_or_else(|_| Utc::now().into())
-                        .with_timezone(&Utc),
-                })
-            });
+            let item = conn
+                .prepare_cached(
+                    "SELECT id, content, embedding, metadata, created_at FROM memory WHERE id = ?",
+                )?
+                .query_row(params![id], |row| {
+                    Ok(MemoryItem {
+                        id: row.get(0)?,
+                        content: row.get(1)?,
+                        embedding: row
+                            .get::<_, Option<Vec<u8>>>(2)?
+                            .and_then(|b| Self::parse_embedding(&b)),
+                        metadata: row
+                            .get::<_, Option<String>>(3)?
+                            .and_then(|s| serde_json::from_str(&s).ok()),
+                        created_at: DateTime::parse_from_rfc3339(row.get::<_, String>(4)?.as_str())
+                            .unwrap_or_else(|_| Utc::now().into())
+                            .with_timezone(&Utc),
+                    })
+                });
 
             if let Ok(item) = item {
                 items.push(item);
@@ -212,11 +213,15 @@ impl Memory for SqliteMemory {
         let conn = self.conn.lock().map_err(|e| format!("Lock error: {}", e))?;
 
         // 序列化 embedding
-        let embedding_blob = item.embedding.as_ref()
+        let embedding_blob = item
+            .embedding
+            .as_ref()
             .map(|v| Self::serialize_embedding(v));
 
         // 序列化 metadata
-        let metadata_json = item.metadata.as_ref()
+        let metadata_json = item
+            .metadata
+            .as_ref()
             .map(|v| serde_json::to_string(v).ok());
 
         conn.execute(
@@ -237,7 +242,7 @@ impl Memory for SqliteMemory {
             if let Some(blob) = embedding_blob {
                 conn.execute(
                     "INSERT INTO vectors (id, embedding) VALUES (?, ?)",
-                    params![&item.id, &blob]
+                    params![&item.id, &blob],
                 )
                 .map_err(|e| format!("Vector insert error: {}", e))?;
             }
@@ -258,24 +263,29 @@ impl Memory for SqliteMemory {
     async fn search(&self, query: &str) -> Result<Vec<MemoryItem>> {
         let conn = self.conn.lock().map_err(|e| format!("Lock error: {}", e))?;
 
-        let rows = conn.prepare(
-            "SELECT id, content, embedding, metadata, created_at FROM memory_fts
+        let rows = conn
+            .prepare(
+                "SELECT id, content, embedding, metadata, created_at FROM memory_fts
              INNER JOIN memory ON memory.rowid = memory_fts.rowid
-             WHERE memory_fts MATCH ?"
-        )?
-        .query_map(params![query], |row| {
-            Ok(MemoryItem {
-                id: row.get(0)?,
-                content: row.get(1)?,
-                embedding: row.get::<_, Option<Vec<u8>>>(2)?.and_then(|b| Self::parse_embedding(&b)),
-                metadata: row.get::<_, Option<String>>(3)?.and_then(|s| serde_json::from_str(&s).ok()),
-                created_at: DateTime::parse_from_rfc3339(row.get::<_, String>(4)?.as_str())
-                    .unwrap_or_else(|_| Utc::now().into())
-                    .with_timezone(&Utc),
-            })
-        })?
-        .collect::<SqliteResult<Vec<_>>>()
-        .map_err(|e| format!("Search error: {}", e))?;
+             WHERE memory_fts MATCH ?",
+            )?
+            .query_map(params![query], |row| {
+                Ok(MemoryItem {
+                    id: row.get(0)?,
+                    content: row.get(1)?,
+                    embedding: row
+                        .get::<_, Option<Vec<u8>>>(2)?
+                        .and_then(|b| Self::parse_embedding(&b)),
+                    metadata: row
+                        .get::<_, Option<String>>(3)?
+                        .and_then(|s| serde_json::from_str(&s).ok()),
+                    created_at: DateTime::parse_from_rfc3339(row.get::<_, String>(4)?.as_str())
+                        .unwrap_or_else(|_| Utc::now().into())
+                        .with_timezone(&Utc),
+                })
+            })?
+            .collect::<SqliteResult<Vec<_>>>()
+            .map_err(|e| format!("Search error: {}", e))?;
 
         Ok(rows)
     }

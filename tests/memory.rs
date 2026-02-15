@@ -11,8 +11,7 @@
 /// 🔒 SECURITY: 内存边界测试，防止 OOM 攻击
 ///
 /// 测试者: 诺诺 (Nono) ⚡ + 花凛 (Fiora) 🛡️
-
-use criterion::{black_box, Criterion, BenchmarkId, Throughput};
+use criterion::{black_box, BenchmarkId, Criterion, Throughput};
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -156,9 +155,9 @@ pub fn bench_high_frequency_allocation(c: &mut Criterion) {
 /// 🔒 SAFETY: 并发内存分配压力测试喵
 /// 验证多线程环境下内存分配器的工作负载
 pub fn bench_concurrent_memory_allocation(c: &mut Criterion) {
-    use std::thread;
-    use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+    use std::thread;
 
     c.bench_function("concurrent_alloc", |b| {
         b.iter(|| {

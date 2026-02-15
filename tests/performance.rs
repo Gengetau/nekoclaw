@@ -10,7 +10,6 @@
 /// 🔒 SECURITY: 纯计算，无外部依赖
 ///
 /// 测试者: 诺诺 (Nono) ⚡
-
 use std::time::{Duration, Instant};
 
 /// 🔒 SAFETY: 性能统计结构体喵
@@ -70,7 +69,8 @@ impl PerformanceStats {
                 let diff = x as i64 - mean as i64;
                 (diff * diff) as u64
             })
-            .sum::<u64>() / count as u64;
+            .sum::<u64>()
+            / count as u64;
         let std_dev = (variance as f64).sqrt() as u64;
 
         Self {
@@ -125,8 +125,16 @@ impl PerformanceStats {
             self.format_duration(self.min_ns),
             self.format_duration(self.max_ns),
             self.format_duration(self.std_dev_ns),
-            if self.mean_ns < 50_000_000 { "✅ PASS" } else { "❌ FAIL" },
-            if self.p99_ns < 100_000_000 { "✅ PASS" } else { "❌ FAIL" }
+            if self.mean_ns < 50_000_000 {
+                "✅ PASS"
+            } else {
+                "❌ FAIL"
+            },
+            if self.p99_ns < 100_000_000 {
+                "✅ PASS"
+            } else {
+                "❌ FAIL"
+            }
         )
     }
 }

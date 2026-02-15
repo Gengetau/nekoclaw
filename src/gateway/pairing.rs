@@ -1,3 +1,4 @@
+use rand::Rng;
 /// Gateway 配对机制模块 🔐
 ///
 /// @诺诺 的设备配对实现喵
@@ -11,19 +12,13 @@
 /// 🔒 SAFETY: 配对码有有效期，过期自动失效
 ///
 /// 实现者: 诺诺 (Nono) ⚡
-
 use serde::{Deserialize, Serialize};
-use tracing::{info, warn, error};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
+use tracing::{error, info, warn};
 use uuid::Uuid;
-use tracing::info;
-use rand::Rng;
-use tracing::{info, debug};
-
-use tracing::info;
 
 /// 🔒 SAFETY: 配对码配置结构体喵
 #[derive(Debug, Clone)]
@@ -55,7 +50,10 @@ pub enum PairingStatus {
     /// 等待配对
     Pending,
     /// 配对成功
-    Paired { session_token: String, device_name: String },
+    Paired {
+        session_token: String,
+        device_name: String,
+    },
     /// 配对失败
     Failed,
     /// 已过期
@@ -139,12 +137,15 @@ impl PairingManager {
 
             // 检查是否重复
             if !pairings.contains_key(&code) {
-                pairings.insert(code.clone(), PairingInfo {
-                    code: code.clone(),
-                    created_at: Instant::now(),
-                    status: PairingStatus::Pending,
-                    device_name: None,
-                });
+                pairings.insert(
+                    code.clone(),
+                    PairingInfo {
+                        code: code.clone(),
+                        created_at: Instant::now(),
+                        status: PairingStatus::Pending,
+                        device_name: None,
+                    },
+                );
 
                 info!("Created pairing code: {}", code);
                 return Ok(code);
@@ -158,11 +159,16 @@ impl PairingManager {
 
     /// 🔒 SAFETY: 验证配对码喵
     /// 异常处理: 无效码、过期码、已配对
-    pub async fn verify_pairing(&self, code: &str, device_name: Option<String>) -> Result<String, String> {
+    pub async fn verify_pairing(
+        &self,
+        code: &str,
+        device_name: Option<String>,
+    ) -> Result<String, String> {
         let mut pairings = self.active_pairings.write().await;
 
         // 检查配对码是否存在
-        let pairing = pairings.get(code)
+        let pairing = pairings
+            .get(code)
             .ok_or_else(|| "Invalid pairing code".to_string())?;
 
         // 检查是否已过期
@@ -188,7 +194,10 @@ impl PairingManager {
             PairingStatus::Pending => {
                 // 配对成功
                 let session_token = Uuid::new_v4().to_string();
-                let device_name_clone = device_name.as_ref().cloned().unwrap_or_else(|| "unknown".to_string());
+                let device_name_clone = device_name
+                    .as_ref()
+                    .cloned()
+                    .unwrap_or_else(|| "unknown".to_string());
 
                 let updated_info = PairingInfo {
                     code: code.to_string(),
@@ -262,7 +271,11 @@ impl PairingManager {
         let pairings = self.active_pairings.read().await;
 
         for (code, pairing) in pairings.iter() {
-            if let PairingStatus::Paired { session_token, device_name } = &pairing.status {
+            if let PairingStatus::Paired {
+                session_token,
+                device_name,
+            } = &pairing.status
+            {
                 if session_token == token {
                     // 检查会话是否过期
                     if pairing.created_at.elapsed() > Duration::from_secs(self.config.session_ttl) {
@@ -308,7 +321,10 @@ mod tests {
         let manager = PairingManager::new(config);
 
         let code = manager.create_pairing().await.unwrap();
-        let session_token = manager.verify_pairing(&code, Some("Test Device".to_string())).await.unwrap();
+        let session_token = manager
+            .verify_pairing(&code, Some("Test Device".to_string()))
+            .await
+            .unwrap();
 
         assert!(!session_token.is_empty());
         assert_eq!(manager.active_count().await, 1);

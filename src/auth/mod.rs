@@ -17,13 +17,13 @@
 use crate::security::CryptoService;
 use chrono::{Duration, Utc};
 use oauth2::basic::BasicClient;
-use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl, RefreshToken, TokenResponse};
 use oauth2::reqwest::async_http_client;
+use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, RefreshToken, TokenResponse, TokenUrl};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use thiserror::Error;
+use tokio::sync::Mutex;
 
 /// 认证错误类型喵
 #[derive(Error, Debug)]
@@ -31,27 +31,27 @@ pub enum AuthError {
     /// 认证失败喵
     #[error("Authentication failed: {0}")]
     AuthenticationFailed(String),
-    
+
     /// Token 无效喵
     #[error("Invalid token: {0}")]
     InvalidToken(String),
-    
+
     /// Token 过期喵
     #[error("Token expired at {0}")]
     TokenExpired(chrono::DateTime<Utc>),
-    
+
     /// 刷新 Token 失败喵
     #[error("Failed to refresh token: {0}")]
     RefreshFailed(String),
-    
+
     /// 配置错误喵
     #[error("Configuration error: {0}")]
     ConfigError(String),
-    
+
     /// 加密错误喵
     #[error("Encryption error: {0}")]
     EncryptionError(String),
-    
+
     /// 提供商不支持喵
     #[error("Provider not supported: {0}")]
     ProviderNotSupported(String),
@@ -62,13 +62,13 @@ pub enum AuthError {
 pub enum OAuthProvider {
     /// Discord OAuth
     Discord,
-    
+
     /// Google OAuth
     Google,
-    
+
     /// GitHub OAuth
     GitHub,
-    
+
     /// 自定义 OAuth
     Custom(String),
 }
@@ -78,25 +78,25 @@ pub enum OAuthProvider {
 pub struct OAuthConfig {
     /// 提供商类型喵
     pub provider: OAuthProvider,
-    
+
     /// 客户端 ID喵
     pub client_id: String,
-    
+
     /// 客户端密钥喵
     pub client_secret: String,
-    
+
     /// 重定向 URI喵
     pub redirect_uri: String,
-    
+
     /// 授权 URL喵
     pub auth_url: String,
-    
+
     /// Token URL喵
     pub token_url: String,
-    
+
     /// 作用域喵
     pub scopes: Vec<String>,
-    
+
     /// 是否启用喵
     pub enabled: bool,
 }
@@ -127,8 +127,10 @@ impl OAuthConfig {
         let redirect_url = RedirectUrl::new(self.redirect_uri.clone())
             .map_err(|e| AuthError::ConfigError(e.to_string()))?;
 
-        Ok(BasicClient::new(client_id, Some(client_secret), auth_url, Some(token_url))
-            .set_redirect_uri(redirect_url))
+        Ok(
+            BasicClient::new(client_id, Some(client_secret), auth_url, Some(token_url))
+                .set_redirect_uri(redirect_url),
+        )
     }
 }
 
@@ -137,19 +139,19 @@ impl OAuthConfig {
 pub struct TokenInfo {
     /// Access Token喵
     pub access_token: String,
-    
+
     /// Refresh Token喵
     pub refresh_token: Option<String>,
-    
+
     /// Token 类型喵
     pub token_type: String,
-    
+
     /// 过期时间喵
     pub expires_at: chrono::DateTime<Utc>,
-    
+
     /// 作用域喵
     pub scopes: Vec<String>,
-    
+
     /// 关联的用户 ID喵
     pub user_id: Option<String>,
 }
@@ -159,19 +161,19 @@ pub struct TokenInfo {
 pub struct AuthSession {
     /// 会话 ID喵
     pub id: String,
-    
+
     /// OAuth 配置喵
     pub config: OAuthConfig,
-    
+
     /// Token 信息喵
     pub token: Option<TokenInfo>,
-    
+
     /// 创建时间喵
     pub created_at: chrono::DateTime<Utc>,
-    
+
     /// 最后活动时间喵
     pub last_activity: chrono::DateTime<Utc>,
-    
+
     /// 状态喵
     pub state: AuthState,
 }
@@ -230,7 +232,7 @@ impl CredentialStore {
         if !storage_path.exists() {
             std::fs::create_dir_all(&storage_path).unwrap();
         }
-        
+
         Self {
             crypto,
             cache: Arc::new(Mutex::new(HashMap::new())),
@@ -239,19 +241,21 @@ impl CredentialStore {
     }
 
     pub async fn save(&self, key: &str, token: &TokenInfo) -> Result<(), AuthError> {
-        let token_json = serde_json::to_string(token)
+        let token_json =
+            serde_json::to_string(token).map_err(|e| AuthError::EncryptionError(e.to_string()))?;
+
+        let encrypted = self
+            .crypto
+            .encrypt(&token_json)
             .map_err(|e| AuthError::EncryptionError(e.to_string()))?;
-        
-        let encrypted = self.crypto.encrypt(&token_json)
-            .map_err(|e| AuthError::EncryptionError(e.to_string()))?;
-        
+
         let file_path = self.storage_path.join(format!("{}.cred", key));
         std::fs::write(&file_path, encrypted)
             .map_err(|e| AuthError::EncryptionError(e.to_string()))?;
-        
+
         let mut cache = self.cache.lock().await;
         cache.insert(key.to_string(), token.clone());
-        
+
         Ok(())
     }
 
@@ -264,29 +268,33 @@ impl CredentialStore {
                 }
             }
         }
-        
+
         let file_path = self.storage_path.join(format!("{}.cred", key));
         if !file_path.exists() {
             return None;
         }
-        
+
         let encrypted_bytes = std::fs::read(&file_path).ok()?;
         let encrypted_str = String::from_utf8_lossy(&encrypted_bytes);
-        let decrypted = self.crypto.decrypt(&encrypted_str)
+        let decrypted = self
+            .crypto
+            .decrypt(&encrypted_str)
             .map_err(|e| {
                 tracing::warn!("Failed to decrypt credential: {}", e);
                 e
-            }).ok()?;
-        
+            })
+            .ok()?;
+
         let token: TokenInfo = serde_json::from_str(&decrypted)
             .map_err(|e| {
                 tracing::warn!("Failed to parse credential: {}", e);
                 e
-            }).ok()?;
-        
+            })
+            .ok()?;
+
         let mut cache = self.cache.lock().await;
         cache.insert(key.to_string(), token.clone());
-        
+
         Some(token)
     }
 
@@ -296,10 +304,10 @@ impl CredentialStore {
             std::fs::remove_file(&file_path)
                 .map_err(|e| AuthError::EncryptionError(e.to_string()))?;
         }
-        
+
         let mut cache = self.cache.lock().await;
         cache.remove(key);
-        
+
         Ok(())
     }
 }
@@ -330,17 +338,23 @@ pub struct AuthManager {
 }
 
 impl AuthManager {
-    pub async fn new(config: OAuthConfig, storage_path: Option<std::path::PathBuf>) -> Result<Self, AuthError> {
-        let storage_path = storage_path
-            .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".nekoclaw/credentials"));
-        
+    pub async fn new(
+        config: OAuthConfig,
+        storage_path: Option<std::path::PathBuf>,
+    ) -> Result<Self, AuthError> {
+        let storage_path = storage_path.unwrap_or_else(|| {
+            dirs::home_dir()
+                .unwrap_or_default()
+                .join(".nekoclaw/credentials")
+        });
+
         let crypto = CryptoService::new(&[0u8; 32]) // TODO: 使用实际的主密钥
             .map_err(|e| AuthError::EncryptionError(e.to_string()))?;
-        
+
         let store = CredentialStore::new(storage_path, crypto);
         let sessions = Arc::new(Mutex::new(HashMap::new()));
         let oauth2_client = config.to_oauth2_client().ok();
-        
+
         Ok(Self {
             config,
             store,
@@ -349,40 +363,54 @@ impl AuthManager {
         })
     }
 
-    pub async fn create_authorization_url(&self, state: &str, _pkce_code_verifier: Option<&str>) -> Result<String, AuthError> {
-        let client = self.oauth2_client
+    pub async fn create_authorization_url(
+        &self,
+        state: &str,
+        _pkce_code_verifier: Option<&str>,
+    ) -> Result<String, AuthError> {
+        let client = self
+            .oauth2_client
             .as_ref()
             .ok_or_else(|| AuthError::ConfigError("OAuth client not initialized".to_string()))?;
-        
+
         let mut request = client.authorize_url(|| oauth2::CsrfToken::new(state.to_string()));
-        
+
         for scope in &self.config.scopes {
             request = request.add_scope(oauth2::Scope::new(scope.to_string()));
         }
-        
+
         let (auth_url, _) = request.url();
         Ok(auth_url.to_string())
     }
 
-    pub async fn exchange_code_for_token(&self, code: &str, pkce_code_verifier: Option<&str>) -> Result<TokenInfo, AuthError> {
-        let client = self.oauth2_client
+    pub async fn exchange_code_for_token(
+        &self,
+        code: &str,
+        pkce_code_verifier: Option<&str>,
+    ) -> Result<TokenInfo, AuthError> {
+        let client = self
+            .oauth2_client
             .as_ref()
             .ok_or_else(|| AuthError::ConfigError("OAuth client not initialized".to_string()))?;
-        
-        let mut token_request = client.exchange_code(oauth2::AuthorizationCode::new(code.to_string()));
-        
+
+        let mut token_request =
+            client.exchange_code(oauth2::AuthorizationCode::new(code.to_string()));
+
         if let Some(verifier) = pkce_code_verifier {
-            token_request = token_request.set_pkce_verifier(oauth2::PkceCodeVerifier::new(verifier.to_string()));
+            token_request = token_request
+                .set_pkce_verifier(oauth2::PkceCodeVerifier::new(verifier.to_string()));
         }
-        
-        let token_result = token_request.request_async(async_http_client)
+
+        let token_result = token_request
+            .request_async(async_http_client)
             .await
             .map_err(|e| AuthError::AuthenticationFailed(format!("{:?}", e)))?;
-        
+
         let now = Utc::now();
-        let expires_in = token_result.expires_in()
+        let expires_in = token_result
+            .expires_in()
             .unwrap_or_else(|| std::time::Duration::from_secs(3600));
-        
+
         Ok(TokenInfo {
             access_token: token_result.access_token().secret().to_string(),
             refresh_token: token_result.refresh_token().map(|t| t.secret().to_string()),
@@ -400,19 +428,31 @@ pub async fn create_auth_manager_from_profiles(
     profile_name: Option<&str>,
 ) -> Result<AuthManager, AuthError> {
     let profile = if let Some(name) = profile_name {
-        profiles.profiles.iter()
+        profiles
+            .profiles
+            .iter()
             .find(|p| p.name == name && p.enabled)
-            .ok_or_else(|| AuthError::ConfigError(format!("Profile '{}' not found or disabled", name)))?
+            .ok_or_else(|| {
+                AuthError::ConfigError(format!("Profile '{}' not found or disabled", name))
+            })?
     } else if let Some(default) = &profiles.default_profile {
-        match profiles.profiles.iter().find(|p| &p.name == default && p.enabled) {
+        match profiles
+            .profiles
+            .iter()
+            .find(|p| &p.name == default && p.enabled)
+        {
             Some(p) => p,
-            None => profiles.profiles.first()
-                .ok_or_else(|| AuthError::ConfigError("No profiles available".to_string()))?
+            None => profiles
+                .profiles
+                .first()
+                .ok_or_else(|| AuthError::ConfigError("No profiles available".to_string()))?,
         }
     } else {
-        profiles.profiles.first()
+        profiles
+            .profiles
+            .first()
             .ok_or_else(|| AuthError::ConfigError("No profiles available".to_string()))?
     };
-    
+
     AuthManager::new(profile.oauth.clone(), storage_path).await
 }

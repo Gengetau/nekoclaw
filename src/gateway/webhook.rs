@@ -11,7 +11,6 @@
 /// 🔒 SAFETY: Webhook 端点需要 Bearer Token 认证
 ///
 /// 实现者: 诺诺 (Nono) ⚡
-
 use axum::{
     extract::{Request, State},
     http::{HeaderMap, StatusCode},
@@ -156,8 +155,8 @@ impl WebhookHandler for DefaultWebhookHandler {
         info!("Processing webhook event: {}", event.event_type);
 
         // 根据事件类型路由
-        let event_type = WebhookEventType::from_str(&event.event_type)
-            .unwrap_or(WebhookEventType::Generic);
+        let event_type =
+            WebhookEventType::from_str(&event.event_type).unwrap_or(WebhookEventType::Generic);
 
         match event_type {
             WebhookEventType::DiscordMessage => {
@@ -195,7 +194,8 @@ impl WebhookManager {
     /// 🔒 SAFETY: 创建新的 Webhook 管理器喵
     /// 异常处理: 队列创建失败时 panic
     pub fn new(config: WebhookConfig) -> Self {
-        let (event_sender, mut event_receiver) = mpsc::channel::<WebhookEvent>(config.retry_queue_size);
+        let (event_sender, mut event_receiver) =
+            mpsc::channel::<WebhookEvent>(config.retry_queue_size);
         let retry_queue = Arc::new(RwLock::new(Vec::new()));
 
         // 启动事件处理任务
@@ -221,19 +221,22 @@ impl WebhookManager {
         body: String,
     ) -> Result<Json<WebhookResponse>, WebhookErrorResponse> {
         // 提取事件类型
-        let event_type_header = headers.get("x-event-type")
+        let event_type_header = headers
+            .get("x-event-type")
             .and_then(|h| h.to_str().ok())
             .unwrap_or("generic");
 
         // 提取事件 ID
         let generated_id = Uuid::new_v4().to_string();
-        let event_id = headers.get("x-event-id")
+        let event_id = headers
+            .get("x-event-id")
             .and_then(|h| h.to_str().ok())
             .unwrap_or(&generated_id);
 
         // 验证签名（如果启用）
         if self.config.verify_signature {
-            let signature = headers.get("x-signature")
+            let signature = headers
+                .get("x-signature")
                 .and_then(|h| h.to_str().ok())
                 .ok_or_else(|| WebhookErrorResponse {
                     code: "INVALID_SIGNATURE".to_string(),
@@ -252,8 +255,8 @@ impl WebhookManager {
         }
 
         // 解析请求体
-        let event_data: serde_json::Value = serde_json::from_str(&body)
-            .map_err(|_| WebhookErrorResponse {
+        let event_data: serde_json::Value =
+            serde_json::from_str(&body).map_err(|_| WebhookErrorResponse {
                 code: "INVALID_PAYLOAD".to_string(),
                 message: "Invalid JSON payload".to_string(),
                 request_id: event_id.to_string(),
@@ -328,8 +331,14 @@ mod tests {
     #[test]
     fn test_event_type_to_string() {
         assert_eq!(WebhookEventType::DiscordMessage.as_str(), "discord.message");
-        assert_eq!(WebhookEventType::DiscordStatusUpdate.as_str(), "discord.status");
-        assert_eq!(WebhookEventType::TelegramMessage.as_str(), "telegram.message");
+        assert_eq!(
+            WebhookEventType::DiscordStatusUpdate.as_str(),
+            "discord.status"
+        );
+        assert_eq!(
+            WebhookEventType::TelegramMessage.as_str(),
+            "telegram.message"
+        );
         assert_eq!(WebhookEventType::Generic.as_str(), "generic");
     }
 
@@ -338,7 +347,9 @@ mod tests {
         let config = WebhookConfig::default();
         let manager = WebhookManager::new(config);
 
-        let response = manager.handle_webhook(HeaderMap::default(), r#"{"test": "data"}"#.to_string()).await;
+        let response = manager
+            .handle_webhook(HeaderMap::default(), r#"{"test": "data"}"#.to_string())
+            .await;
         assert!(response.is_ok());
     }
 }

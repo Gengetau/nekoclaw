@@ -14,17 +14,16 @@
 
 #[cfg(test)]
 mod config_migration_tests {
-    use super::super::validator::{ConfigValidator, ValidationRule, MigrationValidator, ValidationError, ValidationResult};
+    use super::super::validator::{
+        ConfigValidator, MigrationValidator, ValidationError, ValidationResult, ValidationRule,
+    };
     use serde_json::json;
 
     /// 🔒 SAFETY: 测试必填项检查喵
     #[test]
     fn test_required_field_validation() {
         let mut validator = ConfigValidator::new();
-        validator.add_rule(
-            ValidationRule::new("required_field".to_string())
-                .required()
-        );
+        validator.add_rule(ValidationRule::new("required_field".to_string()).required());
 
         // 缺少必填项应该失败
         let config = json!({});
@@ -41,10 +40,7 @@ mod config_migration_tests {
     #[test]
     fn test_type_validation() {
         let mut validator = ConfigValidator::new();
-        validator.add_rule(
-            ValidationRule::new("age".to_string())
-                .with_type("number".to_string())
-        );
+        validator.add_rule(ValidationRule::new("age".to_string()).with_type("number".to_string()));
 
         // 类型正确应该通过
         let config = json!({ "age": 25 });
@@ -60,10 +56,7 @@ mod config_migration_tests {
     #[test]
     fn test_range_validation() {
         let mut validator = ConfigValidator::new();
-        validator.add_rule(
-            ValidationRule::new("percentage".to_string())
-                .with_range(0.0, 100.0)
-        );
+        validator.add_rule(ValidationRule::new("percentage".to_string()).with_range(0.0, 100.0));
 
         // 在范围内应该通过
         let config = json!({ "percentage": 50.0 });
@@ -84,10 +77,7 @@ mod config_migration_tests {
     #[test]
     fn test_length_validation() {
         let mut validator = ConfigValidator::new();
-        validator.add_rule(
-            ValidationRule::new("username".to_string())
-                .with_length_range(3, 20)
-        );
+        validator.add_rule(ValidationRule::new("username".to_string()).with_length_range(3, 20));
 
         // 长度正确应该通过
         let config = json!({ "username": "alice" });
@@ -109,12 +99,11 @@ mod config_migration_tests {
     fn test_allowed_values_validation() {
         let mut validator = ConfigValidator::new();
         validator.add_rule(
-            ValidationRule::new("status".to_string())
-                .with_allowed_values(vec![
-                    "active".to_string(),
-                    "inactive".to_string(),
-                    "pending".to_string(),
-                ])
+            ValidationRule::new("status".to_string()).with_allowed_values(vec![
+                "active".to_string(),
+                "inactive".to_string(),
+                "pending".to_string(),
+            ]),
         );
 
         // 允许的值应该通过
@@ -134,7 +123,7 @@ mod config_migration_tests {
         validator.add_rule(
             ValidationRule::new("password".to_string())
                 .required()
-                .with_dependency("username".to_string())
+                .with_dependency("username".to_string()),
         );
 
         // 缺少依赖项应该失败
@@ -156,7 +145,7 @@ mod config_migration_tests {
         let mut validator = ConfigValidator::new();
         validator.add_rule(
             ValidationRule::new("email".to_string())
-                .with_pattern(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$".to_string())
+                .with_pattern(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$".to_string()),
         );
 
         // 有效邮箱应该通过

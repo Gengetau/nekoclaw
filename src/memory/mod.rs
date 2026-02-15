@@ -10,18 +10,18 @@
  * - OpenClaw IDENTITY.md 兼容解析
  */
 
+pub mod identity_parser;
 pub mod sqlite;
 pub mod vector;
-pub mod identity_parser;
 
 // 重新导出所有子模块接口
+pub use identity_parser::{IdentityParser, OpenClawIdentity};
 pub use sqlite::SqliteMemory;
 pub use vector::SimpleVectorDB;
-pub use identity_parser::{IdentityParser, OpenClawIdentity};
 
-use std::sync::Arc;
-use std::path::PathBuf;
 use crate::core::traits::*;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 /// Memory 工厂 - 创建不同类型的 Memory 实现
 pub struct MemoryFactory;

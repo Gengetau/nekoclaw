@@ -11,8 +11,8 @@ pub mod commands;
 // 重新导出公共接口
 pub use bot::{DiscordBot, DiscordConfig, DiscordEvent};
 pub use commands::{
-    CommandManager, CommandHandler, CommandContext, CommandResult,
-    HelpCommand, StatusCommand, MemoryCommand, ConfigCommand, create_default_commands,
+    create_default_commands, CommandContext, CommandHandler, CommandManager, CommandResult,
+    ConfigCommand, HelpCommand, MemoryCommand, StatusCommand,
 };
 
 // Note: Channel trait implementation for DiscordBot is in bot.rs

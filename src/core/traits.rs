@@ -5,13 +5,12 @@
  * 日期: 2026-02-15 17:08 JST
  */
 
+use chrono::{DateTime, Utc};
+use futures::Stream;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use chrono::{DateTime, Utc};
-use std::pin::Pin;
 use std::error::Error;
-use std::fmt;
-use futures::Stream;
+use std::pin::Pin;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 pub type StdResult<T, E> = std::result::Result<T, E>;
@@ -26,6 +25,27 @@ pub struct Message {
     pub content: String,
 }
 
+impl Message {
+    pub fn user(content: String) -> Self {
+        Self {
+            role: "user".to_string(),
+            content,
+        }
+    }
+    pub fn assistant(content: String) -> Self {
+        Self {
+            role: "assistant".to_string(),
+            content,
+        }
+    }
+    pub fn system(content: String) -> Self {
+        Self {
+            role: "system".to_string(),
+            content,
+        }
+    }
+}
+
 // ============================================================================
 // Provider Trait (AI Model Adapter)
 // ============================================================================
@@ -33,7 +53,10 @@ pub struct Message {
 #[async_trait::async_trait]
 pub trait Provider: Send + Sync {
     async fn chat(&self, messages: &[Message]) -> Result<String>;
-    async fn stream(&self, messages: &[Message]) -> Pin<Box<dyn Stream<Item = Result<String>> + Send>>;
+    async fn stream(
+        &self,
+        messages: &[Message],
+    ) -> Pin<Box<dyn Stream<Item = Result<String>> + Send>>;
     fn name(&self) -> &str;
     fn supports_streaming(&self) -> bool;
 }
@@ -45,7 +68,7 @@ pub trait Provider: Send + Sync {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChannelEvent {
     pub source: String,    // "discord", "telegram", etc.
-    pub sender_id: String,  // 用户/频道 ID
+    pub sender_id: String, // 用户/频道 ID
     pub message: String,
     pub metadata: Option<Value>,
 }
@@ -105,35 +128,6 @@ pub trait Tool: Send + Sync {
 }
 
 // ============================================================================
-// Observer Trait (Observability)
-// ============================================================================
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Metric {
-    pub name: String,
-    pub value: f64,
-    pub tags: Vec<(String, String)>,
-    pub timestamp: DateTime<Utc>,
-}
-
-#[async_trait::async_trait]
-pub trait Observer: Send + Sync {
-    async fn record(&self, metric: Metric) -> Result<()>;
-    async fn flush(&self) -> Result<()>;
-}
-
-// ============================================================================
-// Tunnel Trait (Network Tunnel)
-// ============================================================================
-
-#[async_trait::async_trait]
-pub trait Tunnel: Send + Sync {
-    async fn start(&self) -> Result<String>; // 返回公共 URL
-    async fn stop(&self) -> Result<()>;
-    fn public_url(&self) -> Option<&str>;
-}
-
-// ============================================================================
 // Identity Trait (Persona Engine)
 // ============================================================================
 
@@ -164,15 +158,74 @@ pub trait IdentityEngine: Send + Sync {
 }
 
 // ============================================================================
-// Config Structure
+// Config Structure (aligned with Mika's config.json)
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Config {
-    pub api_key: Option<String>,
-    pub default_provider: String,
-    pub default_model: String,
-    pub default_temperature: f64,
-    pub workspace: std::path::PathBuf,
+pub struct ProviderConfig {
+    pub base_url: String,
+    pub api_key: String,
+    #[serde(default = "default_timeout")]
+    pub timeout: u64,
+    #[serde(default = "default_max_retries")]
+    pub max_retries: u8,
 }
 
+fn default_timeout() -> u64 { 60 }
+fn default_max_retries() -> u8 { 3 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ProvidersConfig {
+    #[serde(default)]
+    pub nvidia: Option<ProviderConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscordConfig {
+    pub enabled: bool,
+    pub token: String,
+    pub allowed_users: Vec<String>,
+    pub require_mention: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Config {
+    #[serde(default)]
+    pub version: String,
+
+    #[serde(default)]
+    pub api_key: Option<String>,
+
+    #[serde(default = "default_provider")]
+    pub default_provider: String,
+
+    #[serde(default = "default_model")]
+    pub default_model: String,
+
+    #[serde(default = "default_temperature")]
+    pub default_temperature: f64,
+
+    pub workspace: std::path::PathBuf,
+
+    // NVIDIA 配置喵
+    #[serde(default)]
+    pub providers: Option<ProvidersConfig>,
+
+    // Discord 配置喵
+    #[serde(rename = "discord")]
+    pub discord_config: Option<DiscordConfig>,
+
+    // Gateway 配置喵
+    pub gateway_port: Option<u16>,
+    pub gateway_bind: Option<String>,
+}
+
+fn default_provider() -> String {
+    "openai".to_string()
+}
+fn default_model() -> String {
+    "gpt-4".to_string()
+}
+fn default_temperature() -> f64 {
+    0.7
+}

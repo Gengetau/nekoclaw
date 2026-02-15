@@ -11,13 +11,12 @@
 /// 🔒 SAFETY: 所有命令必须通过 allowlist 检查，禁止任意命令执行
 ///
 /// 实现者: 诺诺 (Nono) ⚡
-
 use crate::security::{AllowlistService, SandboxService};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
-use tracing::{warn};
+use tracing::warn;
 
 /// 🔒 SAFETY: Shell 工具错误类型喵
 #[derive(Debug, Error)]
@@ -117,7 +116,10 @@ pub struct ShellTool {
 impl ShellTool {
     /// 🔒 SAFETY: 创建新的 Shell 工具喵
     pub fn new(allowlist: Arc<AllowlistService>) -> Self {
-        let sandbox = Arc::new(SandboxService::new((*allowlist).clone(), Default::default()));
+        let sandbox = Arc::new(SandboxService::new(
+            (*allowlist).clone(),
+            Default::default(),
+        ));
         Self { allowlist, sandbox }
     }
 
@@ -158,7 +160,12 @@ impl ShellTool {
         let args: Vec<&str> = request.args.iter().map(|s| s.as_str()).collect();
         let result = self
             .sandbox
-            .execute_async(&request.command, &args, request.work_dir.as_deref(), Some(timeout))
+            .execute_async(
+                &request.command,
+                &args,
+                request.work_dir.as_deref(),
+                Some(timeout),
+            )
             .await
             .map_err(|e| ShellError::ExecutionFailed(e.to_string()))?;
 

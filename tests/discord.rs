@@ -10,8 +10,7 @@
 /// 🔒 SECURITY: 使用模拟数据，不连接真实 Discord API
 ///
 /// 测试者: 诺诺 (Nono) ⚡
-
-use criterion::{black_box, Criterion, BenchmarkId};
+use criterion::{black_box, BenchmarkId, Criterion};
 use std::time::Duration;
 use tokio::runtime::Runtime;
 
@@ -33,9 +32,7 @@ pub fn bench_discord_message_parse(c: &mut Criterion) {
 
     for (i, msg) in test_messages.iter().enumerate() {
         group.bench_with_input(BenchmarkId::new("message", i), msg, |b, msg| {
-            b.iter(|| {
-                black_box(serde_json::from_str::<serde_json::Value>(black_box(msg)))
-            })
+            b.iter(|| black_box(serde_json::from_str::<serde_json::Value>(black_box(msg))))
         });
     }
 
@@ -66,24 +63,28 @@ pub fn bench_discord_message_throughput(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(10));
 
     for concurrent in [10, 100, 1000].iter() {
-        group.bench_with_input(BenchmarkId::new("concurrent", concurrent), concurrent, |b, &concurrent| {
-            b.iter(|| {
-                rt.block_on(async {
-                    let handles: Vec<_> = (0..concurrent)
-                        .map(|_| {
-                            tokio::spawn(async {
-                                // 模拟消息处理
-                                tokio::time::sleep(Duration::from_micros(100)).await;
+        group.bench_with_input(
+            BenchmarkId::new("concurrent", concurrent),
+            concurrent,
+            |b, &concurrent| {
+                b.iter(|| {
+                    rt.block_on(async {
+                        let handles: Vec<_> = (0..concurrent)
+                            .map(|_| {
+                                tokio::spawn(async {
+                                    // 模拟消息处理
+                                    tokio::time::sleep(Duration::from_micros(100)).await;
+                                })
                             })
-                        })
-                        .collect();
+                            .collect();
 
-                    for handle in handles {
-                        handle.await.unwrap();
-                    }
+                        for handle in handles {
+                            handle.await.unwrap();
+                        }
+                    })
                 })
-            })
-        });
+            },
+        );
     }
 
     group.finish();

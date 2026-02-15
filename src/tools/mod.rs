@@ -1,3 +1,4 @@
+pub mod brain;
 /// Tools 模块导出 🔧
 ///
 /// @诺诺 的 Tools 模块统一入口喵
@@ -10,13 +11,11 @@
 /// 🔒 SAFETY: 所有 Tool 都经过安全沙箱保护
 ///
 /// 模块作者: 诺诺 (Nono) ⚡
-
 pub mod shell;
-pub mod brain;
 
 // 🔒 SAFETY: 重新导出公共接口喵
-pub use shell::{ShellTool, ShellRequest, ShellResult, ShellError};
-pub use brain::{BrainTool, AgentMessage, MessageKind, AgentInfo, SubAgentConfig, BrainError};
+pub use brain::{AgentInfo, AgentMessage, BrainError, BrainTool, MessageKind, SubAgentConfig};
+pub use shell::{ShellError, ShellRequest, ShellResult, ShellTool};
 
 // 🔒 SAFETY: 为了兼容性，定义类型别名
 pub type ToolChain = ToolsManager;

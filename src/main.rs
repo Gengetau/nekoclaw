@@ -11,27 +11,25 @@
  * 🔐 SAFETY: 安全优先，集成所有安全模块喵
  */
 
-use clap::{Parser, Subcommand, ArgAction};
+use clap::{ArgAction, Parser, Subcommand};
+use std::io::{BufRead, Write};
 use std::path::PathBuf;
-use tracing::{info, debug, error, warn};
+use tracing::{debug, error, info, warn};
 
-mod core;
-mod providers;
+mod auth;
 mod channels;
-mod memory;
-mod tools;
+mod core;
 mod gateway;
+mod memory;
+mod providers;
 mod security;
 mod service;
-mod auth;
+mod tools;
 
 // 使用别名简化引用
-use core::traits::*;
-use service::{ServiceManager, ServiceState};
-use memory::MemoryManager;
-use providers::ProviderManager;
-use gateway::GatewayServer;
-use tracing::{info, debug};
+use crate::core::traits::*;
+use providers::{ChatRequest, Message as OpenAIMessage, OpenAIClient, OpenAIConfig};
+use service::ServiceManager;
 
 /// CLI 配置喵
 #[derive(Parser, Debug)]
@@ -227,10 +225,6 @@ enum Commands {
         #[arg(short, long, action = ArgAction::SetTrue)]
         verbose: bool,
     },
-
-    /// 帮助信息
-    #[command(name = "help")]
-    Help,
 }
 
 /// 主函数喵
@@ -245,17 +239,16 @@ async fn main() -> Result<()> {
     // 打印启动信息喵
     println!("🐾 Neko-Claw starting...");
     info!("Version: {}", env!("CARGO_PKG_VERSION"));
-    debug!("Debug mode enabled");
 
-    // 展开路径喵
-    let config_path = expand_path(cli.config_dir.clone())?;
-    let config_file = cli.config.clone()
-        .map(expand_path)
-        .transpose()?
-        .unwrap_or_else(|| config_path.join("config.toml"));
-
+    // 确定配置文件路径喵
+    let config_path = if let Some(ref cfg) = cli.config {
+        expand_path(cfg.clone())?
+    } else {
+        expand_path(cli.config_dir.clone())?
+    };
+    
     // 加载配置喵
-    let config = load_config(&config_file).await;
+    let config = load_config(&config_path).await;
 
     // 处理命令喵
     handle_command(&cli, &config, &config_path).await?;
@@ -270,17 +263,14 @@ fn init_logging(verbose: bool) {
     } else {
         tracing::Level::INFO
     };
-    
-    tracing_subscriber::fmt()
-        .with_max_level(level)
-        .init();
+
+    let _ = tracing_subscriber::fmt().with_max_level(level).try_init();
 }
 
 /// 展开路径喵
 fn expand_path(path: PathBuf) -> Result<PathBuf> {
     if path.to_string_lossy().starts_with("~") {
-        let home = dirs::home_dir()
-            .ok_or("Cannot find home directory")?;
+        let home = dirs::home_dir().ok_or("Cannot find home directory")?;
         Ok(home.join(path.to_string_lossy().strip_prefix("~").unwrap()))
     } else {
         Ok(path)
@@ -288,35 +278,60 @@ fn expand_path(path: PathBuf) -> Result<PathBuf> {
 }
 
 /// 加载配置喵
-async fn load_config(path: &PathBuf) -> Config {
-    // TODO: 实现完整的配置加载喵
-    Config::default()
+async fn load_config(config_dir: &PathBuf) -> Config {
+    match crate::core::config::load(config_dir) {
+        Ok(config) => {
+            info!("配置加载成功喵: {}", config_dir.display());
+            config
+        }
+        Err(e) => {
+            warn!("无法加载配置: {} - 使用默认配置喵", e);
+            Config::default()
+        }
+    }
 }
 
 /// 处理命令喵
-async fn handle_command(
-    cli: &Cli,
-    config: &Config,
-    config_path: &PathBuf,
-) -> Result<()> {
+async fn handle_command(cli: &Cli, config: &Config, config_path: &PathBuf) -> Result<()> {
     match &cli.command {
-        Commands::Agent { message, provider, model, max_tokens, temperature } => {
-            handle_agent(message, provider, model, *max_tokens, *temperature).await?;
+        Commands::Agent {
+            message,
+            provider,
+            model,
+            max_tokens,
+            temperature,
+        } => {
+            handle_agent(message, provider, model, *max_tokens, *temperature, config).await?;
         }
 
-        Commands::Gateway { host, port, port_random, webhook_path } => {
-            handle_gateway(host, *port, *port_random, webhook_path).await?;
+        Commands::Gateway {
+            host,
+            port,
+            port_random,
+            webhook_path,
+        } => {
+            handle_gateway(host, *port, *port_random, webhook_path, config).await?;
         }
 
-        Commands::Daemon { background, daemon, pid_file } => {
-            handle_daemon(*background, *daemon, pid_file).await?;
+        Commands::Daemon {
+            background,
+            daemon,
+            pid_file,
+        } => {
+            handle_daemon(*background, *daemon, pid_file, config).await?;
         }
 
         Commands::Status { verbose } => {
             handle_status(*verbose).await?;
         }
 
-        Commands::Memory { query, top_k, store, delete, list } => {
+        Commands::Memory {
+            query,
+            top_k,
+            store,
+            delete,
+            list,
+        } => {
             handle_memory(query, *top_k, store, delete, *list).await?;
         }
 
@@ -324,20 +339,32 @@ async fn handle_command(
             handle_doctor(*fix, *verbose).await?;
         }
 
-        Commands::Service { install, uninstall, start, stop, restart, status, health } => {
-            handle_service(*install, *uninstall, *start, *stop, *restart, *status, *health).await?;
+        Commands::Service {
+            install,
+            uninstall,
+            start,
+            stop,
+            restart,
+            status,
+            health,
+        } => {
+            handle_service(
+                *install, *uninstall, *start, *stop, *restart, *status, *health,
+            )
+            .await?;
         }
 
-        Commands::Config { show, edit, reset, file } => {
-            handle_config(*show, *edit, *reset, file.clone()).await?;
+        Commands::Config {
+            show,
+            edit,
+            reset,
+            file,
+        } => {
+            handle_config(*show, *edit, *reset, file.clone(), config_path).await?;
         }
 
         Commands::Version { verbose } => {
             handle_version(*verbose);
-        }
-
-        Commands::Help => {
-            println!("Use --help to see available options");
         }
     }
 
@@ -351,18 +378,152 @@ async fn handle_agent(
     model: &Option<String>,
     max_tokens: usize,
     temperature: f32,
+    config: &Config,
 ) -> Result<()> {
     info!("Agent mode: provider={}", provider);
-    
+
+    // 获取 NVIDIA 配置 - 从 providers.nvidia 读取
+    let nvidia_config = config
+        .providers
+        .as_ref()
+        .and_then(|p| p.nvidia.as_ref())
+        .cloned()
+        .unwrap_or_else(|| {
+            warn!("未找到 NVIDIA 配置喵，使用默认值");
+            ProviderConfig {
+                base_url: "https://integrate.api.nvidia.com/v1".to_string(),
+                api_key: std::env::var("NVIDIA_API_KEY")
+                    .unwrap_or_else(|_| "missing_api_key".to_string()),
+                timeout: 60,
+                max_retries: 3,
+            }
+        });
+
+    info!("Using base_url: {}", nvidia_config.base_url);
+    if nvidia_config.api_key == "missing_api_key" {
+        warn!("API Key 缺失喵！");
+    }
+
+    // 创建 NVIDIA (OpenAI 兼容) 客户端
+    let openai_config = OpenAIConfig {
+        api_key: nvidia_config.api_key,
+        base_url: nvidia_config.base_url,
+        timeout: nvidia_config.timeout,
+        max_retries: nvidia_config.max_retries,
+    };
+
+    let client = OpenAIClient::new(openai_config);
+
     if let Some(msg) = message {
         info!("Processing message: {}", msg);
         debug!("Max tokens: {}, Temperature: {}", max_tokens, temperature);
-        
-        // TODO: 实现完整的 Agent 处理逻辑喵
-        println!("🤖 Agent response: [TODO] {}", msg);
+
+        // 构建请求喵 - 使用配置中的模型
+        let model_name = model.as_deref()
+            .unwrap_or_else(|| config.default_model.as_str())
+            .to_string();
+
+        let request = ChatRequest {
+            model: Some(model_name.to_string()),
+            messages: vec![OpenAIMessage::user(msg.clone())],
+            temperature: Some(temperature),
+            max_tokens: Some(max_tokens as u32),
+            stream: Some(false),
+        };
+
+        // 发送请求喵
+        match client.chat_api(&request).await {
+            Ok(response) => {
+                // 提取回应内容
+                if let Some(choice) = response.choices.first() {
+                    let reply = &choice.message.content;
+                    println!("🤖 Agent response:");
+                    println!("{}", reply);
+                } else {
+                    println!("❌ 没有收到回应喵");
+                }
+            }
+            Err(e) => {
+                error!("Agent error: {}", e);
+                println!("❌ 对话失败: {}", e);
+            }
+        }
     } else {
-        println!("�对话模式已启用喵！输入消息与 AI 助手对话，输入 'quit' 退出喵。");
-        println!("（交互模式即将实现喵...）");
+        println!(
+            "👋 交互式对话模式已启用喵！输入消息与 AI 助手对话，输入 'quit' 或 'exit' 退出喵。"
+        );
+        println!("（输入 'help' 查看可用命令喵）");
+
+        // REPL 模式喵
+        let mut history: Vec<OpenAIMessage> = vec![];
+
+        loop {
+            print!("🐾 > ");
+            use std::io::Write;
+            std::io::stdout().flush().unwrap();
+
+            let mut input = String::new();
+            if std::io::stdin().read_line(&mut input).is_err() {
+                break;
+            }
+
+            let input = input.trim();
+
+            if input.is_empty() {
+                continue;
+            }
+
+            // 退出命令喵
+            if input.eq_ignore_ascii_case("quit") || input.eq_ignore_ascii_case("exit") {
+                println!("👋 再见喵！");
+                break;
+            }
+
+            if input.eq_ignore_ascii_case("help") {
+                println!("📋 可用命令:");
+                println!("  quit/exit - 退出");
+                println!("  clear     - 清空对话历史");
+                println!("  help      - 显示帮助");
+                continue;
+            }
+
+            if input.eq_ignore_ascii_case("clear") {
+                history.clear();
+                println!("🗑️  对话历史已清空喵");
+                continue;
+            }
+
+            // 添加消息到历史喵
+            history.push(OpenAIMessage::user(input.to_string()));
+
+            // 构建请求喵
+            let model_name = model.as_deref().unwrap_or("deepseek-ai/deepseek-v3.2");
+
+            let request = ChatRequest {
+                model: Some(model_name.to_string()),
+                messages: history.clone(),
+                temperature: Some(temperature),
+                max_tokens: Some(max_tokens as u32),
+                stream: Some(false),
+            };
+
+            // 发送请求喵
+            match client.chat_api(&request).await {
+                Ok(response) => {
+                    if let Some(choice) = response.choices.first() {
+                        let reply = &choice.message.content;
+                        println!("🤖 {}", reply);
+                        history.push(OpenAIMessage::assistant(reply.clone()));
+                    } else {
+                        println!("❌ 没有收到回应喵");
+                    }
+                }
+                Err(e) => {
+                    error!("Agent error: {}", e);
+                    println!("❌ 对话失败: {}", e);
+                }
+            }
+        }
     }
 
     Ok(())
@@ -374,9 +535,9 @@ async fn handle_gateway(
     port: u16,
     port_random: bool,
     webhook_path: &str,
+    _config: &Config,
 ) -> Result<()> {
     let actual_port = if port_random {
-        // 随机选择端口喵
         port + rand::random::<u16>() % 1000
     } else {
         port
@@ -384,12 +545,13 @@ async fn handle_gateway(
 
     info!("Starting gateway on {}:{}", host, actual_port);
     info!("Webhook path: {}", webhook_path);
-    
-    // TODO: 启动完整的 Gateway 服务器喵
-    println!("🚀 Gateway 服务器启动喵: http://{}:{}{}", host, actual_port, webhook_path);
+
+    println!(
+        "🚀 Gateway 服务器启动喵: http://{}:{}{}",
+        host, actual_port, webhook_path
+    );
     println!("（按 Ctrl+C 停止喵）");
 
-    // 保持运行喵
     tokio::signal::ctrl_c().await?;
     println!("\n🛑 Gateway 已停止喵");
 
@@ -400,19 +562,16 @@ async fn handle_gateway(
 async fn handle_daemon(
     background: bool,
     daemon: bool,
-    pid_file: &Option<PathBuf>,
+    _pid_file: &Option<PathBuf>,
+    _config: &Config,
 ) -> Result<()> {
     info!("Daemon mode: background={}, daemon={}", background, daemon);
-    
+
     if daemon {
-        // 守护进程模式喵
         println!("🔄 启动守护进程模式喵...");
-        // TODO: 实现守护进程喵
     } else if background {
-        // 后台运行模式喵
         println!("⚡ 启动后台运行模式喵...");
     } else {
-        // 前台运行模式喵
         println!("🎯 前台运行模式喵（按 Ctrl+C 停止）");
         tokio::signal::ctrl_c().await?;
     }
@@ -421,23 +580,10 @@ async fn handle_daemon(
 }
 
 /// 处理状态检查喵
-async fn handle_status(verbose: bool) -> Result<()> {
+async fn handle_status(_verbose: bool) -> Result<()> {
     println!("📊 系统状态:");
     println!("  版本: {}", env!("CARGO_PKG_VERSION"));
-    println!("  Rust: {} (compiled)", env!("CARGO_PKG_RUST_VERSION"));
     println!("  运行时: tokio");
-    
-    if verbose {
-        println!("  模块:");
-        println!("    - core: ✅");
-        println!("    - providers: ✅");
-        println!("    - channels: ✅");
-        println!("    - memory: ✅");
-        println!("    - tools: ✅");
-        println!("    - gateway: ✅");
-        println!("    - security: ✅");
-        println!("    - service: ✅");
-    }
 
     Ok(())
 }
@@ -450,21 +596,19 @@ async fn handle_memory(
     delete: &Option<String>,
     list: bool,
 ) -> Result<()> {
-    // TODO: 实现完整的记忆管理喵
-    
     if let Some(q) = query {
         println!("🔍 查询记忆: {}", q);
         println!("   Top-{} 结果: [TODO]", top_k);
     }
-    
+
     if let Some(s) = store {
         println!("💾 存储记忆: {}", s);
     }
-    
+
     if let Some(d) = delete {
         println!("🗑️ 删除记忆: {}", d);
     }
-    
+
     if list {
         println!("📋 记忆列表: [TODO]");
     }
@@ -473,27 +617,25 @@ async fn handle_memory(
 }
 
 /// 处理系统诊断喵
-async fn handle_doctor(
-    fix: bool,
-    verbose: bool,
-) -> Result<()> {
+async fn handle_doctor(fix: bool, verbose: bool) -> Result<()> {
     println!("🩺 系统诊断中...");
-    
-    // 检查项喵
+
     let checks = vec![
         ("Rust toolchain", true),
         ("Config directory", true),
         ("Module loading", true),
         ("Dependencies", true),
     ];
-    
+
     let mut all_ok = true;
     for (name, ok) in &checks {
         let status = if *ok { "✅ OK" } else { "❌ FAILED" };
         println!("  {}: {}", name, status);
-        if !*ok { all_ok = false; }
+        if !*ok {
+            all_ok = false;
+        }
     }
-    
+
     if all_ok {
         println!("✅ 所有检查通过喵！");
     } else {
@@ -514,31 +656,26 @@ async fn handle_service(
     stop: bool,
     restart: bool,
     status: bool,
-    health: bool,
+    _health: bool,
 ) -> Result<()> {
-    let manager = ServiceManager::new();
-    
     if status {
-        println!("📋 服务状态:");
-        for (name, state) in manager.status().await {
-            println!("  - {}: {:?}", name, state);
-        }
+        println!("📋 服务状态: [TODO]");
     }
-    
-    if health {
-        println!("🏥 健康检查:");
-        if let Err(e) = manager.health_check().await {
-            println!("  ❌ 健康检查失败: {}", e);
-        } else {
-            println!("  ✅ 所有服务健康喵");
-        }
+    if install {
+        println!("📦 安装服务... [TODO]");
     }
-    
-    if install { println!("📦 安装服务... [TODO]"); }
-    if uninstall { println!("🗑️ 卸载服务... [TODO]"); }
-    if start { println!("▶️ 启动服务... [TODO]"); }
-    if stop { println!("⏹️ 停止服务... [TODO]"); }
-    if restart { println!("🔄 重启服务... [TODO]"); }
+    if uninstall {
+        println!("🗑️ 卸载服务... [TODO]");
+    }
+    if start {
+        println!("▶️ 启动服务... [TODO]");
+    }
+    if stop {
+        println!("⏹️ 停止服务... [TODO]");
+    }
+    if restart {
+        println!("🔄 重启服务... [TODO]");
+    }
 
     Ok(())
 }
@@ -546,32 +683,22 @@ async fn handle_service(
 /// 处理配置管理喵
 async fn handle_config(
     show: bool,
-    edit: bool,
-    reset: bool,
-    file: Option<PathBuf>,
+    _edit: bool,
+    _reset: bool,
+    _file: Option<PathBuf>,
+    config_path: &PathBuf,
 ) -> Result<()> {
     if show {
-        println!("📋 当前配置: [TODO]");
+        println!("📋 当前配置路径: {}", config_path.display());
     }
-    
-    if edit {
-        println!("✏️ 编辑配置... [TODO]");
-    }
-    
-    if reset {
-        println!("🔄 重置配置... [TODO]");
-    }
-
     Ok(())
 }
 
 /// 处理版本信息喵
 fn handle_version(verbose: bool) {
     println!("🐾 Neko-Claw {}", env!("CARGO_PKG_VERSION"));
-    
+
     if verbose {
-        println!("  Commit: {}", env!("VERGEN_GIT_SHA"));
-        println!("  Date: {}", env!("VERGEN_BUILD_TIMESTAMP"));
         println!("  Rust: {}", env!("CARGO_PKG_RUST_VERSION"));
     }
 }

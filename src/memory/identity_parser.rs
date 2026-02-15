@@ -10,12 +10,10 @@
  * - 解析 AGENTS.md (Agent 家族配置)
  */
 
-use std::path::PathBuf;
 use crate::core::traits::*;
+use serde::{Deserialize, Serialize};
 use std::fs;
-use serde::{Serialize, Deserialize};
-
-use serde::{Serialize, Deserialize};
+use std::path::PathBuf;
 
 /// OpenClaw Identity 结构 (兼容 IDENTITY.md)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,8 +91,8 @@ impl IdentityParser {
     /// 解析 IDENTITY.md
     fn parse_identity_md(&self) -> Result<IdentityConfig> {
         let path = self.workspace.join("IDENTITY.md");
-        let content = fs::read_to_string(&path)
-            .map_err(|e| format!("Failed to read IDENTITY.md: {}", e))?;
+        let content =
+            fs::read_to_string(&path).map_err(|e| format!("Failed to read IDENTITY.md: {}", e))?;
 
         // 简化实现: 使用正则或关键行解析
         // 实际实现可以使用 Markdown 解析器
@@ -110,8 +108,8 @@ impl IdentityParser {
     /// 解析 SOUL.md
     fn parse_soul_md(&self) -> Result<Personality> {
         let path = self.workspace.join("SOUL.md");
-        let content = fs::read_to_string(&path)
-            .map_err(|e| format!("Failed to read SOUL.md: {}", e))?;
+        let content =
+            fs::read_to_string(&path).map_err(|e| format!("Failed to read SOUL.md: {}", e))?;
 
         // 简化实现: 手动解析关键内容
         // 实际实现应该使用完整的 Markdown 解析器
@@ -139,8 +137,8 @@ impl IdentityParser {
             return Ok((None, None));
         }
 
-        let content = fs::read_to_string(&path)
-            .map_err(|e| format!("Failed to read AGENTS.md: {}", e))?;
+        let content =
+            fs::read_to_string(&path).map_err(|e| format!("Failed to read AGENTS.md: {}", e))?;
 
         // 简化实现: 提取 Agent 角色和频道信息
         // 实际实现应该解析完整的表格结构
@@ -190,7 +188,7 @@ mod tests {
     #[test]
     fn test_cosine_similarity() {
         use crate::memory::vector::SimpleVectorDB;
-        
+
         let vec1 = vec![1.0, 2.0, 3.0];
         let vec2 = vec![1.0, 2.0, 3.0];
         let similarity = SimpleVectorDB::cosine_similarity_vec(&vec1, &vec2);
