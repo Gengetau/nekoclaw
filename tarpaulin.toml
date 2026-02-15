@@ -1,0 +1,28 @@
+[package]
+name = "test_coverage"
+version = "0.1.0"
+edition = "2021"
+
+[dev-dependencies]
+
+[workspace.metadata.coverage]
+# 测试覆盖率目标
+target = 70
+
+[workspace.metadata.clippy]
+# clippy 检查规则
+warn-on-all-wildcard-imports = true
+
+[profile.release]
+# Release 模式优化
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dev]
+# 开发模式：快速编译
+opt-level = 0
+[profile.test]
+# 测试模式：平衡速度
+opt-level = 1
