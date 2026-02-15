@@ -29,8 +29,8 @@ pub use openrouter::{
 // 🔒 SAFETY: 统一错误类型喵
 pub use openai::ProviderError;
 
-// 🔒 SAFETY: 为了兼容性，导出 ProviderFactory 为 ProviderManager
-pub use ProviderFactory as ProviderManager;
+// 🔒 SAFETY: 为了兼容性，定义类型别名
+pub type ProviderManager = ProviderFactory;
 
 /// 🔒 SAFETY: Provider 枚举喵
 /// 用于在运行时选择不同的 LLM 提供商

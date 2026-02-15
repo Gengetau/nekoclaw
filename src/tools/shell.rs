@@ -117,7 +117,7 @@ pub struct ShellTool {
 impl ShellTool {
     /// 🔒 SAFETY: 创建新的 Shell 工具喵
     pub fn new(allowlist: Arc<AllowlistService>) -> Self {
-        let sandbox = Arc::new(SandboxService::new(allowlist.clone(), Default::default()));
+        let sandbox = Arc::new(SandboxService::new((*allowlist).clone(), Default::default()));
         Self { allowlist, sandbox }
     }
 
@@ -154,10 +154,10 @@ impl ShellTool {
         }
 
         // 🛡️ 使用沙箱执行命令（自动检查参数注入）
-        let timeout = Duration::from_secs(request.timeout_secs);
+        let args: Vec<&str> = request.args.iter().map(|s| s.as_str()).collect();
         let result = self
             .sandbox
-            .execute_async(&request.command, &request.args, request.work_dir, Some(timeout))
+            .execute_async(&request.command, &args)
             .await
             .map_err(|e| ShellError::ExecutionFailed(e.to_string()))?;
 

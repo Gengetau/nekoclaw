@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// 白名单错误类型
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum AllowlistError {
     /// 命令不在白名单中喵
     #[error("Command not in whitelist: {0}")]
@@ -262,61 +262,61 @@ impl Default for AllowlistConfig {
             commands: vec![
                 CommandAllowlistEntry {
                     command: "git".to_string(),
-                    description: "Git 版本控制",
+                    description: "Git 版本控制".to_string(),
                     allow_args: true,
-                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.= ]+$").to_string(),
+                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.= ]+$".to_string()),
                 },
                 CommandAllowlistEntry {
                     command: "ls".to_string(),
-                    description: "列出目录内容",
+                    description: "列出目录内容".to_string(),
                     allow_args: true,
-                    arg_pattern: Some(r"^[-a-zA-Z0-9_/. ]+$").to_string(),
+                    arg_pattern: Some(r"^[-a-zA-Z0-9_/. ]+$".to_string()),
                 },
                 CommandAllowlistEntry {
                     command: "cat".to_string(),
-                    description: "查看文件内容",
+                    description: "查看文件内容".to_string(),
                     allow_args: true,
-                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.]+$").to_string(),
+                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.]+$".to_string()),
                 },
                 CommandAllowlistEntry {
                     command: "grep".to_string(),
-                    description: "搜索文件内容",
+                    description: "搜索文件内容".to_string(),
                     allow_args: true,
-                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.= ]+$").to_string(),
+                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.= ]+$".to_string()),
                 },
                 CommandAllowlistEntry {
                     command: "cargo".to_string(),
-                    description: "Rust 构建工具",
+                    description: "Rust 构建工具".to_string(),
                     allow_args: true,
-                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.= ]+$").to_string(),
+                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.= ]+$".to_string()),
                 },
                 CommandAllowlistEntry {
                     command: "npm".to_string(),
-                    description: "Node 包管理器",
+                    description: "Node 包管理器".to_string(),
                     allow_args: true,
-                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.= ]+$").to_string(),
+                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.= ]+$".to_string()),
                 },
                 CommandAllowlistEntry {
                     command: "echo".to_string(),
-                    description: "输出文本",
+                    description: "输出文本".to_string(),
                     allow_args: true,
-                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.= ]+$").to_string(),
+                    arg_pattern: Some(r"^[-a-zA-Z0-9_/.= ]+$".to_string()),
                 },
                 CommandAllowlistEntry {
                     command: "pwd".to_string(),
-                    description: "显示当前目录",
+                    description: "显示当前目录".to_string(),
                     allow_args: false,
                     arg_pattern: None,
                 },
                 CommandAllowlistEntry {
                     command: "date".to_string(),
-                    description: "显示日期时间",
+                    description: "显示日期时间".to_string(),
                     allow_args: false,
                     arg_pattern: None,
                 },
                 CommandAllowlistEntry {
                     command: "whoami".to_string(),
-                    description: "显示当前用户",
+                    description: "显示当前用户".to_string(),
                     allow_args: false,
                     arg_pattern: None,
                 },
@@ -324,17 +324,17 @@ impl Default for AllowlistConfig {
             paths: vec![
                 PathAllowlistEntry {
                     pattern: "/home/ubuntu/.openclaw/**".to_string(),
-                    description: "OpenClaw 工作目录",
+                    description: "OpenClaw 工作目录".to_string(),
                     recursive: true,
                 },
                 PathAllowlistEntry {
                     pattern: "/tmp/**".to_string(),
-                    description: "临时文件目录",
+                    description: "临时文件目录".to_string(),
                     recursive: true,
                 },
                 PathAllowlistEntry {
                     pattern: "/var/log/**".to_string(),
-                    description: "日志目录（只读）",
+                    description: "日志目录（只读）".to_string(),
                     recursive: true,
                 },
             ],

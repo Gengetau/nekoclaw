@@ -19,9 +19,6 @@ pub use sqlite::SqliteMemory;
 pub use vector::SimpleVectorDB;
 pub use identity_parser::{IdentityParser, OpenClawIdentity};
 
-// 为了兼容性，导出 MemoryFactory 为 MemoryManager
-pub use MemoryFactory as MemoryManager;
-
 use std::sync::Arc;
 use std::path::PathBuf;
 use crate::core::traits::*;
@@ -42,3 +39,6 @@ impl MemoryFactory {
         Ok(Arc::new(memory))
     }
 }
+
+/// MemoryManager 类型别名，用于兼容性
+pub type MemoryManager = MemoryFactory;

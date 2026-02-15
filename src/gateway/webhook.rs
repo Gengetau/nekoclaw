@@ -195,7 +195,7 @@ impl WebhookManager {
     /// 🔒 SAFETY: 创建新的 Webhook 管理器喵
     /// 异常处理: 队列创建失败时 panic
     pub fn new(config: WebhookConfig) -> Self {
-        let (event_sender, mut event_receiver) = mpsc::channel(config.retry_queue_size);
+        let (event_sender, mut event_receiver) = mpsc::channel::<WebhookEvent>(config.retry_queue_size);
         let retry_queue = Arc::new(RwLock::new(Vec::new()));
 
         // 启动事件处理任务
@@ -226,9 +226,10 @@ impl WebhookManager {
             .unwrap_or("generic");
 
         // 提取事件 ID
+        let generated_id = Uuid::new_v4().to_string();
         let event_id = headers.get("x-event-id")
             .and_then(|h| h.to_str().ok())
-            .unwrap_or(&Uuid::new_v4().to_string());
+            .unwrap_or(&generated_id);
 
         // 验证签名（如果启用）
         if self.config.verify_signature {

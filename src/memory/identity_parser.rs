@@ -10,9 +10,11 @@
  * - 解析 AGENTS.md (Agent 家族配置)
  */
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use crate::core::traits::*;
 use std::fs;
+
+use serde::{Serialize, Deserialize};
 
 /// OpenClaw Identity 结构 (兼容 IDENTITY.md)
 #[derive(Debug, Clone, Serialize, Deserialize)]

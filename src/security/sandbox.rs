@@ -45,6 +45,15 @@ pub enum SandboxError {
     OutputReadError(String),
 }
 
+impl From<super::allowlist::AllowlistError> for SandboxError {
+    fn from(err: super::allowlist::AllowlistError) -> Self {
+        match err {
+            super::allowlist::AllowlistError::CommandNotAllowed(cmd) => SandboxError::CommandNotAllowed(cmd),
+            _ => SandboxError::ExecutionFailed(err.to_string()),
+        }
+    }
+}
+
 /// 沙箱配置喵
 #[derive(Clone, Debug)]
 pub struct SandboxConfig {

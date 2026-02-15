@@ -18,8 +18,8 @@ pub mod brain;
 pub use shell::{ShellTool, ShellRequest, ShellResult, ShellError};
 pub use brain::{BrainTool, AgentMessage, MessageKind, AgentInfo, SubAgentConfig, BrainError};
 
-// 🔒 SAFETY: 为了兼容性，导出 ToolsManager 为 ToolChain
-pub use ToolsManager as ToolChain;
+// 🔒 SAFETY: 为了兼容性，定义类型别名
+pub type ToolChain = ToolsManager;
 
 /// 🔒 SAFETY: 工具链管理器结构体喵
 /// 统一管理所有可用工具

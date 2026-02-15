@@ -14,6 +14,7 @@ use std::fmt;
 use futures::Stream;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
+pub type StdResult<T, E> = std::result::Result<T, E>;
 
 // ============================================================================
 // Message Types

@@ -13,7 +13,6 @@
 
 use clap::{Parser, Subcommand, ArgAction};
 use std::path::PathBuf;
-use std::time::Duration;
 
 mod core;
 mod providers;
@@ -26,12 +25,12 @@ mod service;
 mod auth;
 
 // 使用别名简化引用
-use core::traits::*;
-use core::config::Config;
+use core::traits::{Config, Result};
 use service::{ServiceManager, ServiceState};
 use memory::MemoryManager;
 use providers::ProviderManager;
 use gateway::GatewayServer;
+use tracing::{info, debug};
 
 /// CLI 配置喵
 #[derive(Parser, Debug)]
@@ -235,7 +234,7 @@ enum Commands {
 
 /// 主函数喵
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     // 解析 CLI 参数喵
     let cli = Cli::parse();
 
@@ -248,9 +247,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     debug!("Debug mode enabled");
 
     // 展开路径喵
-    let config_path = expand_path(&cli.config_dir)?;
+    let config_path = expand_path(cli.config_dir)?;
     let config_file = cli.config
-        .map(expand_path)
+        .map(|p| expand_path(p))
         .transpose()?
         .unwrap_or_else(|| config_path.join("config.toml"));
 
@@ -273,18 +272,17 @@ fn init_logging(verbose: bool) {
     
     tracing_subscriber::fmt()
         .with_max_level(level)
-        .with_timer(tracing_subscriber::fmt::time::OffsetTime::local_rfc_3339().unwrap())
         .init();
 }
 
 /// 展开路径喵
-fn expand_path(path: &PathBuf) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    if path.starts_with("~") {
+fn expand_path(path: PathBuf) -> Result<PathBuf> {
+    if path.to_string_lossy().starts_with("~") {
         let home = dirs::home_dir()
             .ok_or("Cannot find home directory")?;
-        Ok(home.join(path.strip_prefix("~").unwrap()))
+        Ok(home.join(path.to_string_lossy().strip_prefix("~").unwrap()))
     } else {
-        Ok(path.clone())
+        Ok(path)
     }
 }
 
@@ -299,7 +297,7 @@ async fn handle_command(
     cli: &Cli,
     config: &Config,
     config_path: &PathBuf,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     match &cli.command {
         Commands::Agent { message, provider, model, max_tokens, temperature } => {
             handle_agent(message, provider, model, *max_tokens, *temperature).await?;
@@ -352,7 +350,7 @@ async fn handle_agent(
     model: &Option<String>,
     max_tokens: usize,
     temperature: f32,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     info!("Agent mode: provider={}", provider);
     
     if let Some(msg) = message {
@@ -375,7 +373,7 @@ async fn handle_gateway(
     port: u16,
     port_random: bool,
     webhook_path: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     let actual_port = if port_random {
         // 随机选择端口喵
         port + rand::random::<u16>() % 1000
@@ -402,7 +400,7 @@ async fn handle_daemon(
     background: bool,
     daemon: bool,
     pid_file: &Option<PathBuf>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     info!("Daemon mode: background={}, daemon={}", background, daemon);
     
     if daemon {
@@ -422,7 +420,7 @@ async fn handle_daemon(
 }
 
 /// 处理状态检查喵
-async fn handle_status(verbose: bool) -> Result<(), Box<dyn std::error::Error>> {
+async fn handle_status(verbose: bool) -> Result<()> {
     println!("📊 系统状态:");
     println!("  版本: {}", env!("CARGO_PKG_VERSION"));
     println!("  Rust: {} (compiled)", env!("CARGO_PKG_RUST_VERSION"));
@@ -450,7 +448,7 @@ async fn handle_memory(
     store: &Option<String>,
     delete: &Option<String>,
     list: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     // TODO: 实现完整的记忆管理喵
     
     if let Some(q) = query {
@@ -477,7 +475,7 @@ async fn handle_memory(
 async fn handle_doctor(
     fix: bool,
     verbose: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     println!("🩺 系统诊断中...");
     
     // 检查项喵
@@ -516,7 +514,7 @@ async fn handle_service(
     restart: bool,
     status: bool,
     health: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     let manager = ServiceManager::new();
     
     if status {
@@ -550,7 +548,7 @@ async fn handle_config(
     edit: bool,
     reset: bool,
     file: Option<PathBuf>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     if show {
         println!("📋 当前配置: [TODO]");
     }

@@ -61,24 +61,24 @@ pub struct GatewayState {
 
 /// 🔒 SAFETY: 健康检查响应结构体喵
 #[derive(Debug, Serialize)]
-struct HealthResponse {
+pub struct HealthResponse {
     /// 状态
-    status: String,
+    pub status: String,
     /// 版本
-    version: String,
+    pub version: String,
     /// Uptime
-    uptime_secs: u64,
+    pub uptime_secs: u64,
 }
 
 /// 🔒 SAFETY: API 错误响应结构体喵
 #[derive(Debug, Serialize)]
-struct ErrorResponse {
+pub struct ErrorResponse {
     /// 错误代码
-    code: String,
+    pub code: String,
     /// 错误消息
-    message: String,
+    pub message: String,
     /// 请求 ID
-    request_id: String,
+    pub request_id: String,
 }
 
 impl IntoResponse for ErrorResponse {

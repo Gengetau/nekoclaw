@@ -13,12 +13,16 @@
 /// 实现者: 诺诺 (Nono) ⚡
 
 use serde::{Deserialize, Serialize};
+use tracing::{info, warn, error};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use uuid::Uuid;
+use tracing::info;
 use rand::Rng;
+
+use tracing::info;
 
 /// 🔒 SAFETY: 配对码配置结构体喵
 #[derive(Debug, Clone)]
