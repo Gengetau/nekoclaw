@@ -36,16 +36,22 @@ dirs = "5.0"
 aes-gcm = "0.10"
 rand = "0.8"
 sha2 = "0.10"
+base64 = "0.22"
 
-# Logging
+# Logging - use tracing as log backend
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
+log = "0.4"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
 
 # Obfuscation
 obfstr = "0.4"
 
-# Time Handling
-chrono = "0.4"
+# Time Handling - enable serde feature for chrono
+chrono = { version = "0.4", features = ["serde"] }
 
 # UUID
 uuid = { version = "1.0", features = ["v4"] }
@@ -54,6 +60,9 @@ futures = "0.3.31"
 # Telegram Bot
 teloxide = { version = "0.13", features = ["macros"] }
 tokio-stream = "0.1"
+
+# OAuth2 support
+oauth2 = "4.4"
 
 [dev-dependencies]
 # Benchmarking
