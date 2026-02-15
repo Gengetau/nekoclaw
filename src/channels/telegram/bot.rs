@@ -9,7 +9,7 @@
 //! - 集成安全消息过滤喵
 
 use teloxide::prelude::*;
-use teloxide::types::{Update, ChatId};
+use teloxide::types::{Update, ChatId, Dialogue};
 use futures::Stream;
 use std::pin::Pin;
 use std::sync::Arc;
