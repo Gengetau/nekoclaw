@@ -64,10 +64,6 @@ pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
 tokio-test = "0.4"
 proptest = "1.4"
 
-# Build dependencies
-[build-dependencies]
-vergen = { version = "8", default-features = false, features = ["git", "build", "rustc"] }
-
 # Binary optimization
 [profile.release]
 opt-level = 3

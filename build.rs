@@ -1,18 +1,9 @@
 //!
 //! # Build Script
 //!
-//! Generate version information using vergen
+//! Simple build script for Neko-Claw
 
-use std::error::Error;
-
-fn main() -> Result<(), Box<dyn Error>> {
-    // Generate git and build info
-    vergen::EmitBuilder::builder()
-        .git_sha(true)
-        .git_commit_date()
-        .rustc_version()
-        .cargo_features()
-        .emit()?;
-    
-    Ok(())
+fn main() {
+    // Tell Cargo to re-run this script if build.rs changes
+    println!("cargo:rerun-if-changed=build.rs");
 }
