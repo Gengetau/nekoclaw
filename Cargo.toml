@@ -41,7 +41,7 @@ sha2 = "0.10"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Obfuscation (闭源专用)
+# Obfuscation
 obfstr = "0.4"
 
 # Time Handling
@@ -64,7 +64,8 @@ pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
 tokio-test = "0.4"
 proptest = "1.4"
 
-# Build metadata
+# Build dependencies
+[build-dependencies]
 vergen = { version = "8", default-features = false, features = ["git", "build", "rustc"] }
 
 # Binary optimization
@@ -73,7 +74,3 @@ opt-level = 3
 lto = true
 codegen-units = 1
 strip = true
-
-# Build scripts
-[build-dependencies]
-# 预留给编译时代码混淆

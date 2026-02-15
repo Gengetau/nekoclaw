@@ -1,17 +1,18 @@
 //!
 //! # Build Script
 //!
-//! ⚠️ SAFETY: 生成版本信息喵
-//!
-//! 使用 vergen 生成 Git 和构建时间信息喵
+//! Generate version information using vergen
 
-fn main() {
-    // 使用 vergen 生成版本信息喵
-    vergen::Output::default()
+use std::error::Error;
+
+fn main() -> Result<(), Box<dyn Error>> {
+    // Generate git and build info
+    vergen::EmitBuilder::builder()
         .git_sha(true)
-        .git_commit_date(true)
-        .rustc_version(true)
-        .cargo_features(true)
-        .emit()
-        .expect("Failed to generate version info");
+        .git_commit_date()
+        .rustc_version()
+        .cargo_features()
+        .emit()?;
+    
+    Ok(())
 }
