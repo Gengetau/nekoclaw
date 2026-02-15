@@ -64,6 +64,10 @@ pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
 tokio-test = "0.4"
 proptest = "1.4"
 
+# Build dependencies - use gitcl (Git Command Line) instead of gix
+[build-dependencies]
+vergen = { version = "8", default-features = false, features = ["build", "cargo", "rustc", "git", "gitcl"] }
+
 # Binary optimization
 [profile.release]
 opt-level = 3
