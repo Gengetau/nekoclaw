@@ -108,12 +108,17 @@ impl ObfuscateTransformer {
         use regex::Regex;
 
         // 匹配双引号字符串
-        let re = Regex::new(r#""([^"]*)""#).unwrap();
+        // 🔒 SAFETY: 使用 expect 替代 unwrap，并提供说明喵
+        let re = Regex::new(r#""([^"]*)""#).expect("Static regex compilation failed");
         let result = re.replace_all(code, |caps: &regex::Captures| {
-            let original = caps.get(1).unwrap().as_str();
-            let obfuscated = self.obfuscator.obfuscate_string(original);
-            log.strings_obfuscated += 1;
-            format!("\"{}\"", obfuscated)
+            if let Some(cap) = caps.get(1) {
+                let original = cap.as_str();
+                let obfuscated = self.obfuscator.obfuscate_string(original);
+                log.strings_obfuscated += 1;
+                format!("\"{}\"", obfuscated)
+            } else {
+                caps.get(0).map_or("", |m| m.as_str()).to_string()
+            }
         });
 
         result.to_string()
@@ -125,13 +130,14 @@ impl ObfuscateTransformer {
 
         // 查找变量声明 (let, const, fn 参数)
         // 简化实现：仅匹配 let x = 和 fn name(
-        let re = Regex::new(r"(let|mut)\s+(\w+)\s*=").unwrap();
+        // 🔒 SAFETY: 使用 expect 替代 unwrap 喵
+        let re = Regex::new(r"(let|mut)\s+(\w+)\s*=").expect("Static regex compilation failed");
         let result = re.replace_all(code, |caps: &regex::Captures| {
-            let keyword = caps.get(1).unwrap().as_str();
-            let name = caps.get(2).unwrap().as_str();
+            let keyword = caps.get(1).map_or("", |m| m.as_str());
+            let name = caps.get(2).map_or("", |m| m.as_str());
 
             // 跳过保留字
-            if self.is_reserved_word(name) {
+            if self.is_reserved_word(name) || name.is_empty() {
                 return format!("{} {} =", keyword, name);
             }
 

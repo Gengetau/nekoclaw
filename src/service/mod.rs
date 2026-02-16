@@ -453,10 +453,11 @@ impl ServiceManager {
             let signal = *signal_kind;
             let manager = self.clone();
             tokio::spawn(async move {
-                signal::unix::signal(signal).unwrap().recv().await;
-
-                log::info!("Received shutdown signal");
-                manager.shutdown().await;
+                if let Ok(mut sig) = signal::unix::signal(signal) {
+                    sig.recv().await;
+                    log::info!("Received shutdown signal");
+                    manager.shutdown().await;
+                }
             });
         }
     }

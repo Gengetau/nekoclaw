@@ -1,10 +1,15 @@
+pub mod adapters;
 pub mod brain;
+pub mod filesystem;
+pub mod mcp;
 /// Tools 模块导出 🔧
 ///
 /// @诺诺 的 Tools 模块统一入口喵
 ///
 /// 功能：
+/// - MCP-compatible tool system
 /// - Shell 命令执行工具（安全保护）
+/// - 文件系统操作工具
 /// - Agent Family 协议通信工具
 /// - 工具链管理系统
 ///
@@ -14,7 +19,13 @@ pub mod brain;
 pub mod shell;
 
 // 🔒 SAFETY: 重新导出公共接口喵
+pub use adapters::{McpShellTool, EchoTool};
 pub use brain::{AgentInfo, AgentMessage, BrainError, BrainTool, MessageKind, SubAgentConfig};
+pub use filesystem::{FileSystemTool, FsWriteTool};
+pub use mcp::{
+    format_tool_call_for_llm, format_tool_result_for_llm, format_tools_for_llm, Tool,
+    ToolCallRequest, ToolCallResponse, ToolDescription, ToolError, ToolRegistry, ToolResult,
+};
 pub use shell::{ShellError, ShellRequest, ShellResult, ShellTool};
 
 // 🔒 SAFETY: 为了兼容性，定义类型别名

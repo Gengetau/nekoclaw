@@ -228,16 +228,17 @@ pub struct CredentialStore {
 }
 
 impl CredentialStore {
-    pub fn new(storage_path: std::path::PathBuf, crypto: CryptoService) -> Self {
+    pub fn new(storage_path: std::path::PathBuf, crypto: CryptoService) -> Result<Self, AuthError> {
         if !storage_path.exists() {
-            std::fs::create_dir_all(&storage_path).unwrap();
+            std::fs::create_dir_all(&storage_path)
+                .map_err(|e| AuthError::ConfigError(format!("Failed to create storage directory: {}", e)))?;
         }
 
-        Self {
+        Ok(Self {
             crypto,
             cache: Arc::new(Mutex::new(HashMap::new())),
             storage_path,
-        }
+        })
     }
 
     pub async fn save(&self, key: &str, token: &TokenInfo) -> Result<(), AuthError> {
@@ -351,7 +352,7 @@ impl AuthManager {
         let crypto = CryptoService::new(&[0u8; 32]) // TODO: 使用实际的主密钥
             .map_err(|e| AuthError::EncryptionError(e.to_string()))?;
 
-        let store = CredentialStore::new(storage_path, crypto);
+        let store = CredentialStore::new(storage_path, crypto)?;
         let sessions = Arc::new(Mutex::new(HashMap::new()));
         let oauth2_client = config.to_oauth2_client().ok();
 

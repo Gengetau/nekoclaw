@@ -306,7 +306,7 @@ impl ConfigLoader {
     /// 获取默认模型配置
     pub fn get_default_model(&self) -> Option<String> {
         self.config.as_ref()
-            .and_then(|c| c.models.default.clone())
+            .and_then(|c| c.config.models.default.clone())
     }
 
     /// 获取 Provider 配置
@@ -314,12 +314,12 @@ impl ConfigLoader {
         self.config.as_ref()
             .and_then(|c| {
                 match provider {
-                    "anthropic" => c.models.providers.anthropic.clone(),
-                    "openai" => c.models.providers.openai.clone(),
-                    "openrouter" => c.models.providers.openrouter.clone(),
-                    "azure" => c.models.providers.azure.clone(),
-                    "gemini" => c.models.providers.gemini.clone(),
-                    "nvidia" => c.models.providers.nvidia.clone(),
+                    "anthropic" => c.config.models.providers.anthropic.clone(),
+                    "openai" => c.config.models.providers.openai.clone(),
+                    "openrouter" => c.config.models.providers.openrouter.clone(),
+                    "azure" => c.config.models.providers.azure.clone(),
+                    "gemini" => c.config.models.providers.gemini.clone(),
+                    "nvidia" => c.config.models.providers.nvidia.clone(),
                     _ => None,
                 }
             })
@@ -336,19 +336,19 @@ impl ConfigLoader {
         self.config.as_ref()
             .and_then(|c| {
                 if let Some(agent_name) = agent {
-                    c.agents.agent.as_ref()
-                        .and_then(|a| a.get(agent_name))
+                    c.config.agents.agent.as_ref()
+                        .and_then(|a: &HashMap<String, AgentProfile>| a.get(agent_name))
                         .and_then(|p| p.memory.clone())
                 } else {
                     // 从 defaults 获取
-                    c.agents.defaults.as_ref()
-                        .and_then(|d| {
-                            Some(MemoryConfig {
+                    c.config.agents.defaults.as_ref()
+                        .map(|_| {
+                            MemoryConfig {
                                 kind: Some("sqlite".to_string()),
                                 path: None,
                                 sqlite: None,
                                 vector: None,
-                            })
+                            }
                         })
                 }
             })
@@ -357,9 +357,8 @@ impl ConfigLoader {
     /// 获取 Agent 完整配置 (Phase 6 新增)
     pub fn get_agent_config(&self, agent_name: &str) -> Option<AgentProfile> {
         self.config.as_ref()
-            .and_then(|c| c.agents.agent.as_ref())
-            .and_then(|a| a.get(agent_name))
-            .cloned()
+            .and_then(|c| c.config.agents.agent.as_ref())
+            .and_then(|a: &HashMap<String, AgentProfile>| a.get(agent_name).cloned())
     }
 
     /// 获取 Channel 配置
@@ -367,9 +366,9 @@ impl ConfigLoader {
         self.config.as_ref()
             .and_then(|c| {
                 match channel {
-                    "discord" => c.channels.discord.as_ref().map(|d| ChannelConfig::Discord(d.clone())),
-                    "telegram" => c.channels.telegram.as_ref().map(|t| ChannelConfig::Telegram(t.clone())),
-                    "signal" => c.channels.signal.as_ref().map(|s| ChannelConfig::Signal(s.clone())),
+                    "discord" => c.config.channels.discord.as_ref().map(|d| ChannelConfig::Discord(d.clone())),
+                    "telegram" => c.config.channels.telegram.as_ref().map(|t| ChannelConfig::Telegram(t.clone())),
+                    "signal" => c.config.channels.signal.as_ref().map(|s| ChannelConfig::Signal(s.clone())),
                     _ => None,
                 }
             })
@@ -378,16 +377,15 @@ impl ConfigLoader {
     /// 获取 Discord 账户配置 (Phase 6 新增)
     pub fn get_discord_account(&self, account_name: &str) -> Option<DiscordAccountConfig> {
         self.config.as_ref()
-            .and_then(|c| c.channels.discord.as_ref())
+            .and_then(|c| c.config.channels.discord.as_ref())
             .and_then(|d| d.accounts.as_ref())
-            .and_then(|a| a.get(account_name))
-            .cloned()
+            .and_then(|a: &HashMap<String, DiscordAccountConfig>| a.get(account_name).cloned())
     }
 
     /// 获取所有 Discord 账户 (Phase 6 新增)
     pub fn get_discord_accounts(&self) -> HashMap<String, DiscordAccountConfig> {
         self.config.as_ref()
-            .and_then(|c| c.channels.discord.as_ref())
+            .and_then(|c| c.config.channels.discord.as_ref())
             .and_then(|d| d.accounts.clone())
             .unwrap_or_default()
     }
@@ -395,15 +393,14 @@ impl ConfigLoader {
     /// 获取 FRED API Key
     pub fn get_fred_api_key(&self) -> Option<String> {
         self.config.as_ref()
-            .and_then(|c| c.models.providers.fred.as_ref())
+            .and_then(|c| c.config.models.providers.fred.as_ref())
             .and_then(|f| f.apiKey.clone())
     }
 
     /// 获取 Features 配置 (Phase 6 新增)
     pub fn get_features(&self) -> Option<FeaturesConfig> {
         self.config.as_ref()
-            .map(|c| c.features.clone())
-            .flatten()
+            .and_then(|c| c.config.features.clone())
     }
 
     /// 检查功能是否启用 (Phase 6 新增)
@@ -450,22 +447,25 @@ impl IdentityLoader {
     /// 加载 IDENTITY.md
     pub fn load_identity(&self) -> Result<String> {
         let path = self.workspace.join("IDENTITY.md");
-        std::fs::read_to_string(&path)
-            .map_err(|e| format!("Failed to read IDENTITY.md: {}", e))
+        let content = std::fs::read_to_string(&path)
+            .map_err(|e| format!("Failed to read IDENTITY.md: {}", e))?;
+        Ok(content)
     }
 
     /// 加载 SOUL.md
     pub fn load_soul(&self) -> Result<String> {
         let path = self.workspace.join("SOUL.md");
-        std::fs::read_to_string(&path)
-            .map_err(|e| format!("Failed to read SOUL.md: {}", e))
+        let content = std::fs::read_to_string(&path)
+            .map_err(|e| format!("Failed to read SOUL.md: {}", e))?;
+        Ok(content)
     }
 
     /// 加载 AGENTS.md
     pub fn load_agents(&self) -> Result<String> {
         let path = self.workspace.join("AGENTS.md");
-        std::fs::read_to_string(&path)
-            .map_err(|e| format!("Failed to read AGENTS.md: {}", e))
+        let content = std::fs::read_to_string(&path)
+            .map_err(|e| format!("Failed to read AGENTS.md: {}", e))?;
+        Ok(content)
     }
 
     /// 解析 AGENTS.md 提取 Discord ID 映射
@@ -493,6 +493,8 @@ impl IdentityLoader {
         Ok(map)
     }
 }
+
+pub mod validator;
 
 // 🔒 SAFETY: 重新导出公共接口喵
 pub use validator::{

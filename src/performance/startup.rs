@@ -95,7 +95,7 @@ impl InitTask {
 
         let duration = start.elapsed().as_millis() as u64;
 
-        if let Ok mut time) = self.execution_time_ms.write() {
+        if let Ok(mut time) = self.execution_time_ms.write() {
             *time = Some(duration);
         }
 

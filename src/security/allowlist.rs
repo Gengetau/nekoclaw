@@ -139,7 +139,10 @@ impl AllowlistService {
             .unwrap_or("");
 
         if self.command_set.contains(normalized) {
-            Ok(self.command_details.get(normalized).unwrap().clone())
+            // 🔒 SAFETY: 使用 ok_or 替代 unwrap() 喵
+            self.command_details.get(normalized)
+                .cloned()
+                .ok_or_else(|| AllowlistError::CommandNotAllowed(command.to_string()))
         } else if self.default_deny {
             Err(AllowlistError::CommandNotAllowed(command.to_string()))
         } else {

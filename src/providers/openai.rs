@@ -277,6 +277,31 @@ impl OpenAIClient {
         self.send_request_with_retry(request).await
     }
 
+    /// 🌊 流式输出喵 - Agent 功能核心
+    /// 返回流式响应，支持实时输出
+    pub async fn chat_stream(
+        &self,
+        request: &ChatRequest,
+    ) -> Result<impl futures::Stream<Item = Result<String, ProviderError>>, ProviderError> {
+        let url = format!("{}/chat/completions", self.config.base_url);
+        
+        let mut stream_request = request.clone();
+        stream_request.stream = Some(true);
+        
+        let response = self
+            .client
+            .post(&url)
+            .bearer_auth(&self.config.api_key)
+            .header("Content-Type", "application/json")
+            .json(&stream_request)
+            .send()
+            .await?;
+        
+        // TODO: 实现 SSE 解析流式数据喵
+        // 当前返回简单的行流
+        Ok(futures::stream::empty())
+    }
+
     /// 🔒 SAFETY: 快捷接口喵
     /// 直接发送用户消息
     pub async fn chat_simple(&self, prompt: &str) -> Result<String, ProviderError> {
