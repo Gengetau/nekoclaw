@@ -44,11 +44,11 @@ impl FileSystemTool {
         // 构建完整路径
         let full_path = self.workspace.join(input_path);
 
-        // 确保在工作目录内
-        let canonical_input = input_path.canonicalize().unwrap_or_else(|_| input_path.to_path_buf());
+        // 确保在工作目录内 - 检查完整路径而不是输入路径
+        let canonical_full = full_path.canonicalize().unwrap_or_else(|_| full_path.clone());
         let canonical_workspace = self.workspace.canonicalize().unwrap_or_else(|_| self.workspace.clone());
 
-        if !canonical_input.starts_with(&canonical_workspace) {
+        if !canonical_full.starts_with(&canonical_workspace) {
             return Err(ToolError::PermissionDenied(
                 "Access outside workspace not allowed".to_string(),
             ));
