@@ -627,8 +627,8 @@ async fn handle_gateway(
     host: &str,
     port: u16,
     port_random: bool,
-    webhook_path: &str,
-    _config: &Config,
+    _webhook_path: &str,
+    config: &Config,
 ) -> Result<()> {
     let actual_port = if port_random {
         port + rand::random::<u16>() % 1000
@@ -636,21 +636,28 @@ async fn handle_gateway(
         port
     };
 
-    info!("Starting gateway on {}:{}", host, actual_port);
-    info!("Webhook path: {}", webhook_path);
+    let gateway_config = gateway::GatewayConfig {
+        bind_addr: host.to_string(),
+        port: actual_port,
+        bearer_token: config.api_key.clone().unwrap_or_default(),
+        pairing_enabled: true,
+    };
 
-    println!(
-        "🚀 Gateway 服务器启动喵: http://{}:{}{}",
-        host, actual_port, webhook_path
-    );
+    println!("🚀 Gateway 服务器启动喵: http://{}:{}", host, actual_port);
+    println!("📖 API 端点:");
+    println!("   GET  /health          - 健康检查");
+    println!("   GET  /metrics         - Prometheus 指标");
+    println!("   POST /v1/chat/completions - OpenAI 兼容聊天");
+    println!("   GET  /v1/models       - 模型列表");
+    println!("   GET  /v1/tools        - 工具列表");
     println!("（按 Ctrl+C 停止喵）");
 
-    tokio::signal::ctrl_c().await?;
+    let server = gateway::GatewayServer::new(gateway_config);
+    server.run().await?;
+    
     println!("\n🛑 Gateway 已停止喵");
-
     Ok(())
 }
-
 /// 处理 Daemon 模式喵
 async fn handle_daemon(
     background: bool,
