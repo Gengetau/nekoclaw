@@ -5,14 +5,14 @@
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-CLOSED--SOURCE-red.svg)](#license)
 
-**Version**: v0.1.0 (Development)  
-**Status**: Phase 1-6 Complete ✅
+**Version**: v0.2.0-beta  
+**Status**: Phase 1-7 Complete ✅ (API Gateway Added)
 
 ---
 
 ## 📋 Overview
 
-Neko-Claw is a high-performance AI assistant core written **100% in Rust**, specifically optimized for low-resource environments (e.g., 2GB RAM servers).
+Neko-Claw is a high-performance AI assistant core written **100% in Rust**, optimized for low-resource environments.
 
 ### Core Advantages
 
@@ -20,134 +20,149 @@ Neko-Claw is a high-performance AI assistant core written **100% in Rust**, spec
 |---------|-----------------|------------------|-------------|
 | Memory Usage | 1.52 GB | < 20 MB | **98.7%** ↓ |
 | Cold Start | 3.31s | < 100ms | **97%** ↓ |
-| Binary Size | 28 MB | < 5 MB | **82%** ↓ |
+| Binary Size | 28 MB | ~6.6 MB | **76%** ↓ |
 | Response Latency | 5.98s | < 50ms | **91%** ↓ |
 | Concurrent Connections | ~1,000 | >100,000 | **100x** ↑ |
+
+---
+
+## ✨ Features
+
+### 🤖 Agent System
+- NVIDIA NIM API Integration (z-ai/glm5, deepseek-v3.2)
+- Tool Calling System (`@tool_name` format)
+- Skills Dynamic Loading (SKILL.md format)
+
+### 🌐 Headless API Gateway (NEW!)
+- **OpenAI Compatible**: `POST /v1/chat/completions`
+- **Model List**: `GET /v1/models`
+- **Tool List**: `GET /v1/tools`
+- **Prometheus Metrics**: `GET /metrics`
+- **Health Check**: `GET /health`
+
+### 🔌 MCP Protocol
+- Model Context Protocol Client
+- stdio Transport
+- JSON-RPC 2.0
+
+### 📊 Telemetry
+- SQLite Metrics Storage
+- OpenTelemetry-style Tracing
+- HTML Dashboard
+
+### 🔒 Security
+- Bearer Token Authentication
+- Command Whitelist Sandbox
+- AES-GCM Encryption
+
+---
+
+## 🚀 Quick Start
+
+### Build
+
+```bash
+git clone https://github.com/Gengetau/nekoclaw.git
+cd nekoclaw
+cargo build --release
+```
+
+### CLI Usage
+
+```bash
+# Chat with AI
+./target/release/nekoclaw agent -m "Hello!" -M "z-ai/glm5"
+
+# Start API Gateway
+./target/release/nekoclaw gateway --port 8080
+
+# Show version
+./target/release/nekoclaw version
+```
+
+### API Usage
+
+```bash
+# Health check
+curl http://localhost:8080/health
+
+# List models
+curl http://localhost:8080/v1/models
+
+# Chat (OpenAI compatible)
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "model": "z-ai/glm5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-CLI (clap) → Core (traits/config) → Providers/Channels/Memory
-    → Tools → Gateway (Axum) → Security/Obfuscation
-```
-
-### Core Trait Abstractions
-
-- **Provider**: AI Model Adapters (OpenAI, Anthropic, OpenRouter, NVIDIA NIM)
-- **Channel**: Messaging Channels (Discord, Telegram)
-- **Memory**: Memory System (SQLite + FTS5 + Vector Search)
-- **Tool**: Capability Extensions (Shell, Brain, Memory Recall)
-- **Security**: Encryption, Sandbox, Whitelist
-
-Detailed Docs: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **Rust**: 1.75 or higher
-- **Cargo**: Installed automatically with Rust
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/Gengetau/nekoclaw.git
-cd nekoclaw
-
-# Build Release version
-cargo build --release
-
-# (Optional) Install to system path
-cargo install --path .
-```
-
-### Running
-
-```bash
-# Show CLI help
-nekoclaw --help
-
-# Start Agent mode
-nekoclaw agent
-
-# Start Web Gateway
-nekoclaw gateway
-
-# Check System Status
-nekoclaw status
+CLI (clap)
+    │
+    ├── Agent Mode ──► Providers (OpenAI/NVIDIA)
+    │       │
+    │       ├── Tool Calling (@tool_name)
+    │       │
+    │       └── Skills (SKILL.md)
+    │
+    ├── Gateway Mode ──► Axum HTTP Server
+    │       │
+    │       ├── /v1/chat/completions (OpenAI)
+    │       ├── /v1/models
+    │       ├── /v1/tools
+    │       ├── /metrics (Prometheus)
+    │       └── /health
+    │
+    └── MCP Client ──► External Tool Servers
 ```
 
 ---
 
-## 📚 Documentation
+## 📁 Project Structure
 
-| Document | Description |
-|----------|-------------|
-| [User Guide](docs/USAGE.md) | Full installation, configuration and command reference |
-| [Quick Start](docs/QUICKSTART.md) | 5-minute onboarding guide |
-| [Migration Guide](docs/MIGRATION.md) | Migrating from OpenClaw to Neko-Claw |
-| [Architecture](docs/ARCHITECTURE.md) | Trait abstraction and modular design |
-| [Security](docs/SECURITY.md) | Defense-in-depth and obfuscation strategies |
-| [Performance](docs/PERFORMANCE.md) | Start-up and memory optimization report |
-
----
-
-## 🛡️ Security Features
-
-- **Rust Compile-time Safety**: Ownership and Borrow Checker prevents 99% of memory vulnerabilities
-- **Command Injection Protection**: Shell tool whitelisting and parameter filtering
-- **Filesystem Sandbox**: Workspace enforcement and path blacklisting
-- **Channel Security**: Discord/Telegram sender whitelist verification
-- **Code Obfuscation**: String encryption, symbol stripping, and encrypted API keys (AES-256-GCM)
+```
+src/
+├── main.rs           # CLI Entry Point
+├── core/             # Traits, Config
+├── providers/        # OpenAI, NVIDIA NIM
+├── tools/            # fs_read, fs_write, echo, MCP
+├── skills/           # Dynamic Skill Loader
+├── gateway/          # API Gateway (Axum)
+│   ├── server.rs     # HTTP Server
+│   ├── openai.rs     # OpenAI Compatible API
+│   └── metrics.rs    # Prometheus Metrics
+├── telemetry/        # Metrics, Tracer, Dashboard
+├── memory/           # SQLite, Vector Store
+└── security/         # Sandbox, Encryption
+```
 
 ---
 
-## 📝 Roadmap
+## 👯‍♀️ Cat-Girl Family Team
 
-- [x] **Phase 1**: Base Infrastructure (Core, Traits, Config)
-- [x] **Phase 2**: Adapter Implementation (Provider, Memory, Security)
-- [x] **Phase 3**: Channels & Gateway (Discord, Telegram, Axum)
-- [x] **Phase 4**: Tool Integration (Shell, Brain Tool)
-- [x] **Phase 5**: Performance Optimization & CLI Integration
-- [x] **Phase 6**: Migration & Compatibility Layer
-- [ ] **Phase 7**: Multi-platform Release & Production Testing (In Progress)
-
----
-
-## 📊 Project Stats
-
-| Category | Count |
-|----------|-------|
-| Rust Source Code | ~10,217 lines |
-| Unit Tests | 24 |
-| Benchmark Tests | 8 |
-| Documentation Files | 7 |
-| Total Files | 75 |
-
----
-
-## 🤝 Contributors
-
-Developed by the **Neko-Claw Team**:
-
-- **Nia** - Project Coordinator, Design Lead
-- **Muse** - Chief Engineer, Architect
-- **Nono** - Performance & Concurrency Lead
-- **Karin** - Security & Permission Lead
+| Name | Role | Emoji |
+|------|------|-------|
+| 妮娅 (Nia) | Coordinator & CLI | 😺 |
+| 花凛 (Karin) | Security | ⚔️ |
+| 诺诺 (Nono) | Tools & Skills | 🔧 |
+| 缪斯 (Muse) | MCP & Telemetry | 💜 |
 
 ---
 
 ## 📄 License
 
-**CLOSED SOURCE** - All rights reserved.
-
-Unauthorized copying, distribution, or modification of this software is strictly prohibited.
+CLOSED-SOURCE - All rights reserved.
 
 ---
 
-**🐾 Meow... Welcome to Neko-Claw...** 💜
+## 🔗 Links
+
+- **GitHub**: https://github.com/Gengetau/nekoclaw
+- **Releases**: https://github.com/Gengetau/nekoclaw/releases
