@@ -23,7 +23,7 @@ pub use adapters::{McpShellTool, EchoTool};
 pub use brain::{AgentInfo, AgentMessage, BrainError, BrainTool, MessageKind, SubAgentConfig};
 pub use filesystem::{FileSystemTool, FsWriteTool};
 pub use mcp::{
-    format_tool_call_for_llm, format_tool_result_for_llm, format_tools_for_llm, Tool,
+    format_tool_call_for_llm, format_tool_result_for_llm, format_tools_for_llm, parse_tool_calls, Tool,
     ToolCallRequest, ToolCallResponse, ToolDescription, ToolError, ToolRegistry, ToolResult,
 };
 pub use shell::{ShellError, ShellRequest, ShellResult, ShellTool};

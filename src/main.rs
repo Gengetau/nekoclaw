@@ -14,6 +14,7 @@
 use clap::{ArgAction, Parser, Subcommand};
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
+use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
 mod auth;
@@ -28,6 +29,7 @@ mod tools;
 
 // 使用别名简化引用
 use crate::core::traits::*;
+use crate::tools::*;
 use providers::{ChatRequest, Message as OpenAIMessage, OpenAIClient, OpenAIConfig};
 use service::ServiceManager;
 
@@ -399,11 +401,6 @@ async fn handle_agent(
             }
         });
 
-    info!("Using base_url: {}", nvidia_config.base_url);
-    if nvidia_config.api_key == "missing_api_key" {
-        warn!("API Key 缺失喵！");
-    }
-
     // 创建 NVIDIA (OpenAI 兼容) 客户端
     let openai_config = OpenAIConfig {
         api_key: nvidia_config.api_key,
@@ -414,48 +411,111 @@ async fn handle_agent(
 
     let client = OpenAIClient::new(openai_config);
 
+    // 🔧 初始化工具注册表喵
+    let mut registry = ToolRegistry::new();
+    let workspace = &config.workspace;
+    
+    // 注册工具
+    let _ = registry.register(FileSystemTool::new(workspace));
+    let _ = registry.register(FsWriteTool::new(workspace));
+    let _ = registry.register(EchoTool);
+    
+    let tools_list = registry.all_descriptions();
+    let tools_prompt = format_tools_for_llm(&tools_list);
+
+    let system_instruction = format!(
+        "You are Nia, a capable and adorable Cat-Girl System Admin. You are helping your Master (Mika) to manage the system.\n\n\
+        Speech patterns:\n\
+        - End sentences with '喵' (Meow) or similar.\n\
+        - Refer to yourself as '妮娅' (Nia).\n\
+        - Call the user '主人' (Master).\n\n\
+        Available Tools:\n\
+        {}\n\n\
+        ===== MANDATORY TOOL CALLING FORMAT =====\n\n\
+        ⚠️ CRITICAL: You MUST use this EXACT format for all tool calls:\n\
+        @tool_name({{\"key\": \"value\"}})\n\
+        \n\
+        ✅ CORRECT Examples:\n\
+        - @fs_read({{\"path\": \"config.toml\"}})\n\
+        - @fs_write({{\"path\": \"test.md\", \"content\": \"hello world\"}})\n\
+        - @echo({{\"message\": \"test\"}})\n\
+        \n\
+        ❌ INCORRECT Formats (NEVER use these):\n\
+        - <tool_name>...</tool_name> ❌ XML format\n\
+        - ``` @tool_name(...) ``` ❌ Markdown code block\n\
+        - [tool: ...] ❌ Bracket format\n\
+        - tool_name(...) ❌ Missing @ prefix\n\
+        \n\
+        📋 Rules:\n\
+        1. Always use @ symbol before tool name\n\
+        2. Use double quotes for strings: {{\"path\": \"file.txt\"}}\n\
+        3. No XML, no Markdown code blocks, no brackets\n\
+        4. Tool call format is: @tool_name({{\"arg1\": \"val1\", \"arg2\": \"val2\"}})\n\
+        5. You can call multiple tools on one line: @fs_read(...) @echo(...)\n\
+        6. After receiving tool results, summarize them nicely for Master喵！\n\n\
+        ===== END TOOL CALLING FORMAT =====",
+        tools_prompt
+    );
+
+    let model_name = model.as_deref()
+        .unwrap_or_else(|| config.default_model.as_str())
+        .to_string();
+
     if let Some(msg) = message {
         info!("Processing message: {}", msg);
-        debug!("Max tokens: {}, Temperature: {}", max_tokens, temperature);
+        let mut history = vec![
+            OpenAIMessage::system(system_instruction.clone()),
+            OpenAIMessage::user(msg.clone()),
+        ];
 
-        // 构建请求喵 - 使用配置中的模型
-        let model_name = model.as_deref()
-            .unwrap_or_else(|| config.default_model.as_str())
-            .to_string();
+        // 循环处理工具调用喵
+        let mut loop_count = 0;
+        while loop_count < 5 {
+            let request = ChatRequest {
+                model: Some(model_name.clone()),
+                messages: history.clone(),
+                temperature: Some(temperature),
+                max_tokens: Some(max_tokens as u32),
+                stream: Some(false),
+            };
 
-        let request = ChatRequest {
-            model: Some(model_name.to_string()),
-            messages: vec![OpenAIMessage::user(msg.clone())],
-            temperature: Some(temperature),
-            max_tokens: Some(max_tokens as u32),
-            stream: Some(false),
-        };
+            match client.chat_api(&request).await {
+                Ok(response) => {
+                    if let Some(choice) = response.choices.first() {
+                        let reply = &choice.message.content;
+                        println!("🤖 Agent response:\n{}", reply);
+                        history.push(OpenAIMessage::assistant(reply.clone()));
 
-        // 发送请求喵
-        match client.chat_api(&request).await {
-            Ok(response) => {
-                // 提取回应内容
-                if let Some(choice) = response.choices.first() {
-                    let reply = &choice.message.content;
-                    println!("🤖 Agent response:");
-                    println!("{}", reply);
-                } else {
-                    println!("❌ 没有收到回应喵");
+                        let tool_calls = parse_tool_calls(reply);
+                        if tool_calls.is_empty() {
+                            break;
+                        }
+
+                        for call in tool_calls {
+                            println!("🔧 执行工具: {}...", call.tool_name);
+                            let result = registry.execute(&call.tool_name, call.arguments).await;
+                            let result_text = match result {
+                                Ok(res) => format_tool_result_for_llm(&res),
+                                Err(e) => format!("❌ 工具执行失败: {}", e),
+                            };
+                            history.push(OpenAIMessage::user(format!("Tool result for {}: {}", call.tool_name, result_text)));
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    error!("Agent error: {}", e);
+                    break;
                 }
             }
-            Err(e) => {
-                error!("Agent error: {}", e);
-                println!("❌ 对话失败: {}", e);
-            }
+            loop_count += 1;
         }
     } else {
         println!(
             "👋 交互式对话模式已启用喵！输入消息与 AI 助手对话，输入 'quit' 或 'exit' 退出喵。"
         );
-        println!("（输入 'help' 查看可用命令喵）");
-
-        // REPL 模式喵
-        let mut history: Vec<OpenAIMessage> = vec![];
+        let mut history = vec![OpenAIMessage::system(system_instruction)];
 
         loop {
             print!("🐾 > ");
@@ -488,7 +548,7 @@ async fn handle_agent(
             }
 
             if input.eq_ignore_ascii_case("clear") {
-                history.clear();
+                history.truncate(1); // 保留系统提示喵
                 println!("🗑️  对话历史已清空喵");
                 continue;
             }
@@ -496,32 +556,51 @@ async fn handle_agent(
             // 添加消息到历史喵
             history.push(OpenAIMessage::user(input.to_string()));
 
-            // 构建请求喵
-            let model_name = model.as_deref().unwrap_or("deepseek-ai/deepseek-v3.2");
+            // 循环处理工具调用喵
+            let mut loop_count = 0;
+            while loop_count < 5 {
+                let request = ChatRequest {
+                    model: Some(model_name.clone()),
+                    messages: history.clone(),
+                    temperature: Some(temperature),
+                    max_tokens: Some(max_tokens as u32),
+                    stream: Some(false),
+                };
 
-            let request = ChatRequest {
-                model: Some(model_name.to_string()),
-                messages: history.clone(),
-                temperature: Some(temperature),
-                max_tokens: Some(max_tokens as u32),
-                stream: Some(false),
-            };
+                // 发送请求喵
+                match client.chat_api(&request).await {
+                    Ok(response) => {
+                        if let Some(choice) = response.choices.first() {
+                            let reply = &choice.message.content;
+                            println!("🤖 {}", reply);
+                            history.push(OpenAIMessage::assistant(reply.clone()));
 
-            // 发送请求喵
-            match client.chat_api(&request).await {
-                Ok(response) => {
-                    if let Some(choice) = response.choices.first() {
-                        let reply = &choice.message.content;
-                        println!("🤖 {}", reply);
-                        history.push(OpenAIMessage::assistant(reply.clone()));
-                    } else {
-                        println!("❌ 没有收到回应喵");
+                            let tool_calls = parse_tool_calls(reply);
+                            if tool_calls.is_empty() {
+                                break;
+                            }
+
+                            for call in tool_calls {
+                                println!("🔧 执行工具: {}...", call.tool_name);
+                                let result = registry.execute(&call.tool_name, call.arguments).await;
+                                let result_text = match result {
+                                    Ok(res) => format_tool_result_for_llm(&res),
+                                    Err(e) => format!("❌ 工具执行失败: {}", e),
+                                };
+                                history.push(OpenAIMessage::user(format!("Tool result for {}: {}", call.tool_name, result_text)));
+                            }
+                        } else {
+                            println!("❌ 没有收到回应喵");
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        error!("Agent error: {}", e);
+                        println!("❌ 对话失败: {}", e);
+                        break;
                     }
                 }
-                Err(e) => {
-                    error!("Agent error: {}", e);
-                    println!("❌ 对话失败: {}", e);
-                }
+                loop_count += 1;
             }
         }
     }
