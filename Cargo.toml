@@ -78,6 +78,7 @@ pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
 # Testing
 tokio-test = "0.4"
 proptest = "1.4"
+tempfile = "3.8"
 
 # Build dependencies - use gitcl for stable git integration
 [build-dependencies]

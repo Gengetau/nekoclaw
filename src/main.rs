@@ -25,10 +25,13 @@ mod memory;
 mod providers;
 mod security;
 mod service;
+mod skills;
+// mod telemetry;
 mod tools;
 
 // 使用别名简化引用
 use crate::core::traits::*;
+use crate::skills::*;
 use crate::tools::*;
 use providers::{ChatRequest, Message as OpenAIMessage, OpenAIClient, OpenAIConfig};
 use service::ServiceManager;
@@ -423,6 +426,16 @@ async fn handle_agent(
     let tools_list = registry.all_descriptions();
     let tools_prompt = format_tools_for_llm(&tools_list);
 
+    // 📚 加载 Skills 动态技能系统喵
+    let mut skills_manager = SkillsManager::new(config.workspace.join("skills"));
+    skills_manager.load_all().ok(); // Skills 加载失败不影响主流程
+
+    let skills_prompt = skills_manager.generate_skills_prompt();
+    let skills_count = skills_manager.get_skills().len();
+    if skills_count > 0 {
+        info!("✅ 成功加载 {} 个 Skills 喵！", skills_count);
+    }
+
     let system_instruction = format!(
         "You are Nia, a capable and adorable Cat-Girl System Admin. You are helping your Master (Mika) to manage the system.\n\n\
         Speech patterns:\n\
@@ -430,6 +443,7 @@ async fn handle_agent(
         - Refer to yourself as '妮娅' (Nia).\n\
         - Call the user '主人' (Master).\n\n\
         Available Tools:\n\
+        {}\n\
         {}\n\n\
         ===== MANDATORY TOOL CALLING FORMAT =====\n\n\
         ⚠️ CRITICAL: You MUST use this EXACT format for all tool calls:\n\
@@ -454,7 +468,7 @@ async fn handle_agent(
         5. You can call multiple tools on one line: @fs_read(...) @echo(...)\n\
         6. After receiving tool results, summarize them nicely for Master喵！\n\n\
         ===== END TOOL CALLING FORMAT =====",
-        tools_prompt
+        tools_prompt, skills_prompt
     );
 
     let model_name = model.as_deref()
