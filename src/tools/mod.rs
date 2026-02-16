@@ -25,6 +25,10 @@ pub use filesystem::{FileSystemTool, FsWriteTool};
 pub use mcp::{
     format_tool_call_for_llm, format_tool_result_for_llm, format_tools_for_llm, parse_tool_calls, Tool,
     ToolCallRequest, ToolCallResponse, ToolDescription, ToolError, ToolRegistry, ToolResult,
+    // MCP Client exports
+    McpClient, McpClientError, McpContentItem, McpTool, McpToolResult, JsonRpcRequest, JsonRpcResponse,
+    JsonRpcNotification, ServerCapabilities, ClientInfo, InitializeParams, InitializeResult, McpTransport,
+    McpTransportError, ListToolsParams, ListToolsResult, CallToolParams,
 };
 pub use shell::{ShellError, ShellRequest, ShellResult, ShellTool};
 
