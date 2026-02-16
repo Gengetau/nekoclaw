@@ -26,7 +26,7 @@ mod providers;
 mod security;
 mod service;
 mod skills;
-// mod telemetry;
+mod telemetry;
 mod tools;
 
 // 使用别名简化引用
