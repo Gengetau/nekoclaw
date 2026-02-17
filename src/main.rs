@@ -95,11 +95,11 @@ enum Commands {
     #[command(name = "gateway")]
     Gateway {
         /// 绑定主机喵
-        #[arg(short, long, default_value = "127.0.0.1")]
+        #[arg(long, default_value = "127.0.0.1")]
         host: String,
 
         /// 端口号喵
-        #[arg(short, long, default_value = "8080")]
+        #[arg(short = 'p', long, default_value = "8080")]
         port: u16,
 
         /// 随机端口模式喵
